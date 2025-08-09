@@ -1,3 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --moon-bg: #0D0D0D;
+    --moon-primary: #00AEEF;
+    --moon-secondary: #8A2BE2;
+  }
+  html, body, #root { height: 100%; }
+  body { background-color: var(--moon-bg); }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-moon-card/80 border border-moon-border rounded-lg shadow-soft backdrop-blur;
+  }
+  .glow-border {
+    box-shadow: 0 0 0 1px rgba(0, 174, 239, 0.35), 0 0 0 2px rgba(138, 43, 226, 0.25);
+  }
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-moon-primary hover:brightness-110 transition;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  }
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-md text-moon-primary border border-moon-primary/60 hover:border-moon-secondary/70 transition;
+  }
+}
