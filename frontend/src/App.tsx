@@ -30,10 +30,15 @@ function App() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [filters, setFilters] = useState<{ level?: string; tag?: string; q?: string; from?: string; to?: string }>({});
+  const [filters, setFilters] = useState<{ level?: string; tag?: string; q?: string; from?: string; to?: string; hasSource?: boolean }>({});
 
   useEffect(() => {
-    const params = new URLSearchParams({ limit: '20', page: String(page), paginate: 'true', ...Object.fromEntries(Object.entries(filters).filter(([,v]) => !!v)) });
+    const queryObj: Record<string, string> = { limit: '20', page: String(page), paginate: 'true' };
+    for (const [k, v] of Object.entries(filters)) {
+      if (v === undefined || v === '' || v === false) continue;
+      queryObj[k] = String(v);
+    }
+    const params = new URLSearchParams(queryObj);
     fetch(`http://localhost:4000/api/logs?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => {
@@ -69,7 +74,12 @@ function App() {
   const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
 
   useEffect(() => {
-    const params = new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([,v]) => !!v)) });
+    const qs: Record<string, string> = {};
+    for (const [k, v] of Object.entries(filters)) {
+      if (v === undefined || v === '' || v === false) continue;
+      qs[k] = String(v);
+    }
+    const params = new URLSearchParams(qs);
     fetch(`http://localhost:4000/api/stats/logs?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => {
@@ -92,7 +102,7 @@ function App() {
   }, [filters]);
 
   return (
-    <div className="min-h-screen text-neutral-100" style={{ fontFamily: 'Inter, system-ui, sans-serif', backgroundColor: 'var(--moon-bg)' }}>
+    <div className="min-h-screen text-neutral-100 dashboard-bg dashboard-font">
       <Header />
       <div className="max-w-6xl mx-auto flex">
         <Sidebar />
@@ -104,21 +114,32 @@ function App() {
           )}
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-3">
-              <Filters onApply={(f) => { setPage(1); setFilters(f); }} />
+              <Filters
+                values={filters}
+                onApply={(f) => { setPage(1); setFilters(f); }}
+                onClear={() => { setPage(1); setFilters({}); }}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 lg:col-span-3">
               <StatCard label="Total Logs" value={totalCount} />
               <StatCard label="Errors" value={byLevel.find(b => b.level==='error')?.count ?? 0} highlight="secondary" />
               <StatCard label="Warnings" value={byLevel.find(b => b.level==='warn')?.count ?? 0} highlight="secondary" />
-              <div className="flex items-center justify-end"><NewLogModal onCreated={() => setPage(1)} /></div>
+              <ActivityMini
+                data={timeline.map(t => ({ t: t.time, v: (t.info ?? 0)+(t.warn ?? 0)+(t.error ?? 0)+(t.debug ?? 0) }))}
+                actions={<NewLogModal onCreated={() => setPage(1)} />}
+              />
             </div>
 
             <Card title="Últimos logs" className="lg:col-span-2">
               {loading ? (
                 <div className="p-6 text-neutral-400">Carregando...</div>
               ) : (
-                <RecentLogsTable items={logs.slice(0, 10)} />
+                <RecentLogsTable
+                  items={logs.slice(0, 10)}
+                  activeLevel={filters.level as any}
+                  onFilterLevel={(lvl) => { setPage(1); setFilters(s => ({ ...s, level: lvl } as any)); }}
+                />
               )}
               <div className="mt-3">
                 <Pagination page={page} pages={pages} onChange={setPage} />
@@ -131,9 +152,7 @@ function App() {
                   <LogsByLevel data={byLevel} />
                 </Suspense>
               </Card>
-              <div className="mt-4">
-                <ActivityMini data={timeline.map(t => ({ t: t.time, v: (t.info ?? 0)+(t.warn ?? 0)+(t.error ?? 0)+(t.debug ?? 0) }))} />
-              </div>
+              
             </div>
           </section>
 

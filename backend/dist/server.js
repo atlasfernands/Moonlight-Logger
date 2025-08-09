@@ -8,6 +8,7 @@ const socket_io_1 = require("socket.io");
 const app_1 = require("./app");
 const env_1 = require("./config/env");
 const mongo_1 = require("./config/mongo");
+const consoleCapture_1 = require("./services/consoleCapture");
 async function bootstrap() {
     (0, mongo_1.initMongoWithRetry)();
     const app = (0, app_1.createApp)();
@@ -15,6 +16,8 @@ async function bootstrap() {
     const io = new socket_io_1.Server(server, { cors: { origin: '*' } });
     // disponibiliza o io para rotas e middlewares
     app.set('io', io);
+    // captura console.* e erros não tratados
+    (0, consoleCapture_1.installConsoleCapture)(io);
     io.on('connection', (socket) => {
         console.log('[socket] client conectado', socket.id);
     });

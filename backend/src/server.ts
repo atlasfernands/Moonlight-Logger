@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import { createApp } from './app';
 import { env } from './config/env';
 import { initMongoWithRetry, mongoStatus } from './config/mongo';
+import { installConsoleCapture } from './services/consoleCapture';
 
 async function bootstrap() {
   initMongoWithRetry();
@@ -13,6 +14,8 @@ async function bootstrap() {
 
   // disponibiliza o io para rotas e middlewares
   (app as any).set('io', io);
+  // captura console.* e erros não tratados
+  installConsoleCapture(io);
 
   io.on('connection', (socket) => {
     console.log('[socket] client conectado', socket.id);

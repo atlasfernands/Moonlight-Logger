@@ -1,12 +1,15 @@
 import { ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
 
-type Props = { data: Array<{ t: string; v: number }> };
+type Props = { data: Array<{ t: string; v: number }>; actions?: React.ReactNode };
 
-export function ActivityMini({ data }: Props) {
+export function ActivityMini({ data, actions }: Props) {
   return (
     <div className="glass-card p-4">
-      <div className="text-neutral-300 text-sm mb-2">Activity</div>
-      <div style={{ width: '100%', height: 120 }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-neutral-300 text-sm">Activity</div>
+        {actions ? <div className="shrink-0">{actions}</div> : null}
+      </div>
+      <div className="w-full h-[120px]">
         <ResponsiveContainer>
           <AreaChart data={data}>
             <defs>

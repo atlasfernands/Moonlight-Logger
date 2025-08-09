@@ -10,11 +10,17 @@
   }
   html, body, #root { height: 100%; }
   body { background-color: var(--moon-bg); }
+  .dashboard-bg { background-color: var(--moon-bg); }
+  .dashboard-font { font-family: 'Inter', system-ui, sans-serif; }
 }
 
 @layer components {
   .glass-card {
     @apply bg-moon-card/80 border border-moon-border rounded-lg shadow-soft backdrop-blur;
+  }
+  .glass-card:hover {
+    box-shadow: theme('boxShadow.moon');
+    transition: box-shadow 0.2s ease;
   }
   .glow-border {
     box-shadow: 0 0 0 1px rgba(0, 174, 239, 0.35), 0 0 0 2px rgba(138, 43, 226, 0.25);
