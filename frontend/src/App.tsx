@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
@@ -58,27 +58,31 @@ function App() {
     };
   }, [page, filters]);
 
-  const byLevel = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const l of logs) map[l.level] = (map[l.level] ?? 0) + 1;
-    return Object.entries(map).map(([level, count]) => ({ level, count }));
-  }, [logs]);
+  const [byLevel, setByLevel] = useState<{ level: string; count: number }[]>([]);
+  const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
 
-  const timeline: TimelinePoint[] = useMemo(() => {
-    // agrega por minuto
-    const buckets: Record<string, TimelinePoint> = {};
-    for (const l of logs) {
-      const t = new Date(l.timestamp);
-      const key = `${t.getHours().toString().padStart(2, '0')}:${t.getMinutes().toString().padStart(2, '0')}`;
-      if (!buckets[key]) buckets[key] = { time: key, info: 0, warn: 0, error: 0, debug: 0 };
-      const bucket = buckets[key]!;
-      if (l.level === 'info') bucket.info = (bucket.info ?? 0) + 1;
-      else if (l.level === 'warn') bucket.warn = (bucket.warn ?? 0) + 1;
-      else if (l.level === 'error') bucket.error = (bucket.error ?? 0) + 1;
-      else if (l.level === 'debug') bucket.debug = (bucket.debug ?? 0) + 1;
-    }
-    return Object.values(buckets).sort((a, b) => (a.time < b.time ? -1 : 1));
-  }, [logs]);
+  useEffect(() => {
+    const params = new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([,v]) => !!v)) });
+    fetch(`http://localhost:4000/api/stats/logs?${params.toString()}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const counts = data.countsByLevel ?? {};
+        setByLevel([
+          { level: 'info', count: counts.info ?? 0 },
+          { level: 'warn', count: counts.warn ?? 0 },
+          { level: 'error', count: counts.error ?? 0 },
+          { level: 'debug', count: counts.debug ?? 0 },
+        ]);
+        setTimeline((data.timeline ?? []).map((t: any) => ({
+          time: new Date(t.time).toLocaleTimeString(),
+          info: t.info,
+          warn: t.warn,
+          error: t.error,
+          debug: t.debug,
+        })));
+      })
+      .catch(() => void 0);
+  }, [filters]);
 
   return (
     <div className="min-h-screen text-neutral-100" style={{ fontFamily: 'Inter, system-ui, sans-serif', backgroundColor: 'var(--moon-bg)' }}>

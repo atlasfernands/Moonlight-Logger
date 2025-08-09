@@ -7,12 +7,14 @@ exports.createApp = createApp;
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const logs_1 = require("./routes/logs");
+const stats_1 = require("./routes/stats");
 function createApp() {
     const app = (0, express_1.default)();
     app.use((0, cors_1.default)());
     app.use(express_1.default.json({ limit: '1mb' }));
     app.get('/health', (_req, res) => res.json({ ok: true }));
     app.use('/api/logs', logs_1.logsRouter);
+    app.use('/api/stats', stats_1.statsRouter);
     return app;
 }
 //# sourceMappingURL=app.js.map
