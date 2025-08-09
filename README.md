@@ -1,5 +1,10 @@
 # Moonlight Logger
 
+[![CI](https://github.com/atlasfernands/Moonlight-Logger/actions/workflows/ci.yml/badge.svg)](https://github.com/atlasfernands/Moonlight-Logger/actions/workflows/ci.yml)
+![coverage](https://img.shields.io/badge/coverage-soon-lightgrey)
+![dependabot](https://img.shields.io/badge/Dependabot-enabled-brightgreen?logo=dependabot)
+![node](https://img.shields.io/badge/node-%3E%3D18-00AEEF?logo=node.js)
+
 > Um sistema inteligente de logging para aplicações Node.js, com análise automática e painel web dark mode — em tempo real via Socket.IO.
 
 ## Visão
@@ -58,6 +63,17 @@ npm run dev
 
 Acesse: `http://localhost:5173`
 
+## Instalação com Docker (one-click)
+
+Requer Docker + Docker Compose. Sobe MongoDB, Redis, Backend e Frontend:
+
+```bash
+docker compose up -d --build
+```
+
+- Backend: `http://localhost:4000`
+- Frontend: `http://localhost:5173`
+
 ## Tempo Real (Socket.IO)
 
 - Backend emite `log-created` ao salvar um novo log.
@@ -77,11 +93,20 @@ curl -X POST http://localhost:4000/api/logs \
 
 ## Roadmap
 
-- Filtros avançados + paginação
-- Gráficos de volume por nível/tempo (Recharts/Chart.js)
-- Preferências do usuário no painel
-- ML opcional (TensorFlow.js)
+- [x] Filtros básicos (nível, tag, busca, limite)
+- [ ] Gráficos estatísticos (volume por nível/tempo)
+- [ ] Preferências do usuário (tema/filtros)
+- [ ] ML com TensorFlow.js (padrões avançados)
+
+## Screenshots
+
+Coloque seus screenshots ou GIFs em `assets/screenshots/` e referencie aqui:
+
+![Overview Dark](assets/screenshots/overview.png)
+![Realtime Logs](assets/screenshots/realtime.gif)
 
 ## Licença
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 MIT
