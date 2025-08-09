@@ -1,0 +1,26 @@
+{
+  "name": "moonlight-logger-client",
+  "version": "0.1.0",
+  "description": "Cliente Node para enviar logs ao Moonlight Logger (HTTP).",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "logging",
+    "moonlight",
+    "logger",
+    "node"
+  ],
+  "author": "Atlas Fernands",
+  "devDependencies": {
+    "@types/node": "^24.2.1",
+    "typescript": "^5.9.2"
+  }
+}

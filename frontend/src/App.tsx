@@ -21,6 +21,7 @@ type LogItem = {
   timestamp: string;
   tags?: string[];
   suggestion?: string;
+  context?: { file?: string; line?: number; column?: number };
 };
 
 function App() {
