@@ -9,7 +9,7 @@ const app_1 = require("./app");
 const env_1 = require("./config/env");
 const mongo_1 = require("./config/mongo");
 async function bootstrap() {
-    await (0, mongo_1.connectToMongo)();
+    (0, mongo_1.initMongoWithRetry)();
     const app = (0, app_1.createApp)();
     const server = http_1.default.createServer(app);
     const io = new socket_io_1.Server(server, { cors: { origin: '*' } });
@@ -20,6 +20,13 @@ async function bootstrap() {
     });
     server.listen(env_1.env.port, () => {
         console.log(`Servidor rodando em http://localhost:${env_1.env.port}`);
+    });
+    // health detalhada
+    app.get('/status', (_req, res) => {
+        res.json({
+            ok: true,
+            mongo: mongo_1.mongoStatus,
+        });
     });
 }
 bootstrap().catch((err) => {

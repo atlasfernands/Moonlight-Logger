@@ -2,10 +2,10 @@ import http from 'http';
 import { Server } from 'socket.io';
 import { createApp } from './app';
 import { env } from './config/env';
-import { connectToMongo } from './config/mongo';
+import { initMongoWithRetry, mongoStatus } from './config/mongo';
 
 async function bootstrap() {
-  await connectToMongo();
+  initMongoWithRetry();
 
   const app = createApp();
   const server = http.createServer(app);
@@ -20,6 +20,14 @@ async function bootstrap() {
 
   server.listen(env.port, () => {
     console.log(`Servidor rodando em http://localhost:${env.port}`);
+  });
+
+  // health detalhada
+  app.get('/status', (_req, res) => {
+    res.json({
+      ok: true,
+      mongo: mongoStatus,
+    });
   });
 }
 
