@@ -36,7 +36,9 @@ function initMongoWithRetry(retryMs = 5000) {
     const mongoUri = env_1.env.mongoUri;
     const tryConnect = async () => {
         try {
-            await mongoose_1.default.connect(mongoUri);
+            // Falhar rápido e não "bufferizar" operações quando offline
+            mongoose_1.default.set('bufferCommands', false);
+            await mongoose_1.default.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
         }
         catch (err) {
             exports.mongoStatus.connected = false;

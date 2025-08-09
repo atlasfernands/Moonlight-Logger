@@ -1,1 +1,1 @@
-{"version":3,"file":"mongo.d.ts","sourceRoot":"","sources":["../../src/config/mongo.ts"],"names":[],"mappings":"AAGA,eAAO,MAAM,WAAW;;eAEE,SAAS,GAAG,MAAM;CAC3C,CAAC;AAoBF,wBAAgB,kBAAkB,CAAC,OAAO,GAAE,MAAa,GAAG,IAAI,CAiB/D"}
+{"version":3,"file":"mongo.d.ts","sourceRoot":"","sources":["../../src/config/mongo.ts"],"names":[],"mappings":"AAGA,eAAO,MAAM,WAAW;;eAEE,SAAS,GAAG,MAAM;CAC3C,CAAC;AAoBF,wBAAgB,kBAAkB,CAAC,OAAO,GAAE,MAAa,GAAG,IAAI,CAmB/D"}

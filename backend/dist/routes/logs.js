@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.logsRouter = void 0;
 const express_1 = require("express");
 const Log_1 = require("../models/Log");
+const mongo_1 = require("../config/mongo");
 const logAnalysisService_1 = require("../services/logAnalysisService");
 exports.logsRouter = (0, express_1.Router)();
 exports.logsRouter.post('/', async (req, res) => {
@@ -30,6 +31,8 @@ exports.logsRouter.post('/', async (req, res) => {
     res.status(201).json(created);
 });
 exports.logsRouter.get('/', async (req, res) => {
+    if (!mongo_1.mongoStatus.connected)
+        return res.status(503).json({ error: 'mongo_offline' });
     const { level, tag, q, limit = '50', page = '1', from, to, paginate } = req.query;
     const query = {};
     if (level)

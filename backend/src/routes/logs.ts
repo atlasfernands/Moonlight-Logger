@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { LogModel, type LogLevel } from '../models/Log';
+import { mongoStatus } from '../config/mongo';
 import { analyzeLog } from '../services/logAnalysisService';
 
 export const logsRouter = Router();
@@ -28,6 +29,7 @@ logsRouter.post('/', async (req, res) => {
 });
 
 logsRouter.get('/', async (req, res) => {
+  if (!mongoStatus.connected) return res.status(503).json({ error: 'mongo_offline' });
   const { level, tag, q, limit = '50', page = '1', from, to, paginate } = req.query as Record<string, string>;
   const query: Record<string, any> = {};
   if (level) query.level = level;

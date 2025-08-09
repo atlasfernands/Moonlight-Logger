@@ -5,6 +5,10 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Card } from './components/ui/Card';
 import { Filters } from './components/ui/Filters';
 import { Pagination } from './components/ui/Pagination';
+import { StatCard } from './components/ui/StatCard';
+import { RecentLogsTable } from './components/logs/RecentLogsTable';
+import { ActivityMini } from './components/charts/ActivityMini';
+import { NewLogModal } from './components/logs/NewLogModal';
 import { Suspense, lazy } from 'react';
 const LogsByLevel = lazy(() => import('./components/charts/LogsByLevel').then(m => ({ default: m.LogsByLevel })));
 const LogsTimeline = lazy(() => import('./components/charts/LogsTimeline').then(m => ({ default: m.LogsTimeline })));
@@ -25,6 +29,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [filters, setFilters] = useState<{ level?: string; tag?: string; q?: string; from?: string; to?: string }>({});
 
   useEffect(() => {
@@ -35,9 +40,11 @@ function App() {
         if (Array.isArray(data)) {
           setLogs(data);
           setPages(1);
+          setTotalCount(data.length);
         } else {
           setLogs(data.items ?? []);
           setPages(data.pageInfo?.pages ?? 1);
+          setTotalCount(data.pageInfo?.total ?? 0);
         }
       })
       .catch(() => setError('Não foi possível conectar ao backend (porta 4000).'))
@@ -99,46 +106,35 @@ function App() {
             <div className="lg:col-span-3">
               <Filters onApply={(f) => { setPage(1); setFilters(f); }} />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 lg:col-span-3">
+              <StatCard label="Total Logs" value={totalCount} />
+              <StatCard label="Errors" value={byLevel.find(b => b.level==='error')?.count ?? 0} highlight="secondary" />
+              <StatCard label="Warnings" value={byLevel.find(b => b.level==='warn')?.count ?? 0} highlight="secondary" />
+              <div className="flex items-center justify-end"><NewLogModal onCreated={() => setPage(1)} /></div>
+            </div>
+
             <Card title="Últimos logs" className="lg:col-span-2">
               {loading ? (
                 <div className="p-6 text-neutral-400">Carregando...</div>
               ) : (
-                <ul className="divide-y divide-moon-border/80">
-                  {logs.map((log) => (
-                    <li key={log._id} className="p-4 hover:bg-white/5">
-                      <div className="flex items-start justify-between">
-      <div>
-                          <span className="px-2 py-0.5 rounded text-xs mr-2 border glow-border" data-level={log.level}>
-                            {log.level.toUpperCase()}
-                          </span>
-                          <span className="text-neutral-200">{log.message}</span>
-                        </div>
-                        <time className="text-xs text-neutral-500">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </time>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {log.tags?.map((t) => (
-                          <span key={t} className="text-xs text-neutral-400">#{t}</span>
-                        ))}
-                      </div>
-                      {log.suggestion && (
-                        <p className="mt-2 text-sm text-emerald-400">Sugestão: {log.suggestion}</p>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                <RecentLogsTable items={logs.slice(0, 10)} />
               )}
               <div className="mt-3">
                 <Pagination page={page} pages={pages} onChange={setPage} />
               </div>
             </Card>
 
-            <Card title="Logs por nível">
-              <Suspense fallback={<div className="p-4 text-neutral-400">Carregando gráfico...</div>}>
-                <LogsByLevel data={byLevel} />
-              </Suspense>
-            </Card>
+            <div>
+              <Card title="Logs por nível">
+                <Suspense fallback={<div className="p-4 text-neutral-400">Carregando gráfico...</div>}>
+                  <LogsByLevel data={byLevel} />
+                </Suspense>
+              </Card>
+              <div className="mt-4">
+                <ActivityMini data={timeline.map(t => ({ t: t.time, v: (t.info ?? 0)+(t.warn ?? 0)+(t.error ?? 0)+(t.debug ?? 0) }))} />
+              </div>
+            </div>
           </section>
 
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">

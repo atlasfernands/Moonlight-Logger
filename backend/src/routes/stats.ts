@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { LogModel } from '../models/Log';
+import { mongoStatus } from '../config/mongo';
 
 export const statsRouter = Router();
 
 type Interval = 'minute' | 'hour' | 'day';
 
 statsRouter.get('/logs', async (req, res) => {
+  if (!mongoStatus.connected) return res.status(503).json({ error: 'mongo_offline' });
   const { from, to, interval = 'minute', tz = 'UTC', points } = req.query as Record<string, string>;
 
   const validInterval: Interval = (['minute', 'hour', 'day'] as const).includes(
