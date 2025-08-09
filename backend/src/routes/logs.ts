@@ -28,12 +28,30 @@ logsRouter.post('/', async (req, res) => {
 });
 
 logsRouter.get('/', async (req, res) => {
-  const { level, tag, q, limit = 50 } = req.query as Record<string, string>;
+  const { level, tag, q, limit = '50', page = '1', from, to, paginate } = req.query as Record<string, string>;
   const query: Record<string, any> = {};
   if (level) query.level = level;
   if (tag) query.tags = tag;
   if (q) query.message = { $regex: q, $options: 'i' };
-  const items = await LogModel.find(query).sort({ timestamp: -1 }).limit(Number(limit));
+  if (from || to) {
+    query.timestamp = {} as any;
+    if (from) (query.timestamp as any).$gte = new Date(from);
+    if (to) (query.timestamp as any).$lte = new Date(to);
+  }
+
+  const limitNumber = Math.min(Math.max(Number(limit) || 50, 1), 100);
+  const pageNumber = Math.max(Number(page) || 1, 1);
+  const skip = (pageNumber - 1) * limitNumber;
+
+  const [items, total] = await Promise.all([
+    LogModel.find(query).sort({ timestamp: -1 }).skip(skip).limit(limitNumber),
+    LogModel.countDocuments(query),
+  ]);
+
+  if (String(paginate).toLowerCase() === 'true') {
+    const pages = Math.max(Math.ceil(total / limitNumber), 1);
+    return res.json({ items, pageInfo: { total, page: pageNumber, pages, limit: limitNumber } });
+  }
   res.json(items);
 });
 

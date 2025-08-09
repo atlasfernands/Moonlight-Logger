@@ -30,7 +30,7 @@ exports.logsRouter.post('/', async (req, res) => {
     res.status(201).json(created);
 });
 exports.logsRouter.get('/', async (req, res) => {
-    const { level, tag, q, limit = 50 } = req.query;
+    const { level, tag, q, limit = '50', page = '1', from, to, paginate } = req.query;
     const query = {};
     if (level)
         query.level = level;
@@ -38,7 +38,24 @@ exports.logsRouter.get('/', async (req, res) => {
         query.tags = tag;
     if (q)
         query.message = { $regex: q, $options: 'i' };
-    const items = await Log_1.LogModel.find(query).sort({ timestamp: -1 }).limit(Number(limit));
+    if (from || to) {
+        query.timestamp = {};
+        if (from)
+            query.timestamp.$gte = new Date(from);
+        if (to)
+            query.timestamp.$lte = new Date(to);
+    }
+    const limitNumber = Math.min(Math.max(Number(limit) || 50, 1), 100);
+    const pageNumber = Math.max(Number(page) || 1, 1);
+    const skip = (pageNumber - 1) * limitNumber;
+    const [items, total] = await Promise.all([
+        Log_1.LogModel.find(query).sort({ timestamp: -1 }).skip(skip).limit(limitNumber),
+        Log_1.LogModel.countDocuments(query),
+    ]);
+    if (String(paginate).toLowerCase() === 'true') {
+        const pages = Math.max(Math.ceil(total / limitNumber), 1);
+        return res.json({ items, pageInfo: { total, page: pageNumber, pages, limit: limitNumber } });
+    }
     res.json(items);
 });
 //# sourceMappingURL=logs.js.map

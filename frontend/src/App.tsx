@@ -3,6 +3,8 @@ import { io, type Socket } from 'socket.io-client';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { Card } from './components/ui/Card';
+import { Filters } from './components/ui/Filters';
+import { Pagination } from './components/ui/Pagination';
 import { Suspense, lazy } from 'react';
 const LogsByLevel = lazy(() => import('./components/charts/LogsByLevel').then(m => ({ default: m.LogsByLevel })));
 const LogsTimeline = lazy(() => import('./components/charts/LogsTimeline').then(m => ({ default: m.LogsTimeline })));
@@ -21,11 +23,23 @@ function App() {
   const [logs, setLogs] = useState<LogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [filters, setFilters] = useState<{ level?: string; tag?: string; q?: string; from?: string; to?: string }>({});
 
   useEffect(() => {
-    fetch('http://localhost:4000/api/logs?limit=20')
+    const params = new URLSearchParams({ limit: '20', page: String(page), paginate: 'true', ...Object.fromEntries(Object.entries(filters).filter(([,v]) => !!v)) });
+    fetch(`http://localhost:4000/api/logs?${params.toString()}`)
       .then((r) => r.json())
-      .then((data) => setLogs(data))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setLogs(data);
+          setPages(1);
+        } else {
+          setLogs(data.items ?? []);
+          setPages(data.pageInfo?.pages ?? 1);
+        }
+      })
       .catch(() => setError('Não foi possível conectar ao backend (porta 4000).'))
       .finally(() => setLoading(false));
 
@@ -42,7 +56,7 @@ function App() {
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [page, filters]);
 
   const byLevel = useMemo(() => {
     const map: Record<string, number> = {};
@@ -78,6 +92,9 @@ function App() {
             </div>
           )}
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-3">
+              <Filters onApply={(f) => { setPage(1); setFilters(f); }} />
+            </div>
             <Card title="Últimos logs" className="lg:col-span-2">
               {loading ? (
                 <div className="p-6 text-neutral-400">Carregando...</div>
@@ -108,6 +125,9 @@ function App() {
                   ))}
                 </ul>
               )}
+              <div className="mt-3">
+                <Pagination page={page} pages={pages} onChange={setPage} />
+              </div>
             </Card>
 
             <Card title="Logs por nível">
