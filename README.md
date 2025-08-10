@@ -1,9 +1,9 @@
 # Moonlight Logger
 
-[![CI](https://github.com/atlasfernands/Moonlight-Logger/actions/workflows/ci.yml/badge.svg)](https://github.com/atlasfernands/Moonlight-Logger/actions/workflows/ci.yml)
-![coverage](https://img.shields.io/badge/coverage-soon-lightgrey)
-![dependabot](https://img.shields.io/badge/Dependabot-enabled-brightgreen?logo=dependabot)
 ![node](https://img.shields.io/badge/node-%3E%3D18-00AEEF?logo=node.js)
+![typescript](https://img.shields.io/badge/TypeScript-5.9+-blue?logo=typescript)
+![react](https://img.shields.io/badge/React-18+-61DAFB?logo=react)
+![tailwind](https://img.shields.io/badge/Tailwind-3.2.7-38B2AC?logo=tailwind-css)
 
 > Um sistema inteligente de logging para aplicações Node.js, com análise automática e painel web dark mode — em tempo real via Socket.IO.
 
