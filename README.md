@@ -12,7 +12,7 @@
 - Clareza para debugging: registrar, entender e agir sobre logs rapidamente
 - Análise automática (tags e sugestões)
 - Tempo real: novos logs aparecem instantaneamente
-- UI dark inspirada na vibe “Filho da Lua”
+- UI dark inspirada na vibe "Filho da Lua"
 
 ## Stack
 
@@ -43,6 +43,12 @@ PORT=4000
 MONGO_URI=mongodb://localhost:27017/moonlightlogger
 REDIS_URL=redis://localhost:6379
 NODE_ENV=development
+
+# Token para autenticação de ingestão (opcional)
+INGEST_TOKEN=your-secure-token-here
+
+# Provider de IA (heuristic, openai, ollama)
+AI_PROVIDER=heuristic
 ```
 
 ## Executando
@@ -81,20 +87,47 @@ docker compose up -d --build
 
 ## API
 
+### Logs Básicos
 - POST `/api/logs` — cria um log e dispara `log-created`
 - GET  `/api/logs` — lista logs. Filtros: `level`, `tag`, `q`, `limit`
 
-Exemplo:
+### Ingestão de Logs (Recomendado)
+- POST `/api/ingest/raw` — ingestão de logs brutos com análise automática
+- GET  `/api/ingest/health` — status da ingestão
+
+Exemplo de ingestão:
 ```bash
-curl -X POST http://localhost:4000/api/logs \
+# Sem autenticação (se INGEST_TOKEN não configurado)
+curl -X POST http://localhost:4000/api/ingest/raw \
   -H "Content-Type: application/json" \
-  -d '{"level":"error","message":"Timeout connecting to Redis"}'
+  -d '{"level":"error","message":"Cannot read property map of undefined","stack":"at dashboard.tsx:42:13","source":"my-app"}'
+
+# Com autenticação
+curl -X POST http://localhost:4000/api/ingest/raw \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-secure-token-here" \
+  -d '{"level":"error","message":"Timeout connecting to Redis","source":"api-service"}'
 ```
+
+**Vantagens da ingestão:**
+- Parse automático de arquivo:linha:coluna
+- Análise heurística imediata (tags + sugestões)
+- Processamento assíncrono para IA
+- Rate-limit: 100 requests/15min por IP
+- Suporte a batch (até 100 logs por request)
+
+## Análise Inteligente
+
+- **Heurística**: análise baseada em padrões de texto
+- **Tags automáticas**: categorização por tipo de erro
+- **Sugestões**: dicas para resolver problemas comuns
+- **IA**: classificação e explicação avançada (em desenvolvimento)
 
 ## Roadmap
 
 - [x] Filtros básicos (nível, tag, busca, limite)
-- [ ] Gráficos estatísticos (volume por nível/tempo)
+- [x] Gráficos estatísticos (volume por nível/tempo)
+- [x] Ingestão de logs com análise automática
 - [ ] Preferências do usuário (tema/filtros)
 - [ ] ML com TensorFlow.js (padrões avançados)
 
