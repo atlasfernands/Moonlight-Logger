@@ -9,6 +9,18 @@ export interface LogDocument {
   context?: Record<string, unknown>;
   tags?: string[];
   suggestion?: string;
+  file?: string;
+  line?: number;
+  column?: number;
+  source?: string;
+  ai?: {
+    classification?: string;
+    explanation?: string;
+    suggestion?: string;
+    provider?: string;
+    score?: number;
+    at?: Date;
+  };
 }
 
 const LogSchema = new Schema<LogDocument>(
@@ -19,6 +31,18 @@ const LogSchema = new Schema<LogDocument>(
     context: { type: Object },
     tags: [{ type: String }],
     suggestion: { type: String },
+    file: { type: String, index: true },
+    line: { type: Number },
+    column: { type: Number },
+    source: { type: String, index: true },
+    ai: {
+      classification: { type: String },
+      explanation: { type: String },
+      suggestion: { type: String },
+      provider: { type: String },
+      score: { type: Number },
+      at: { type: Date },
+    },
   },
   { versionKey: false }
 );

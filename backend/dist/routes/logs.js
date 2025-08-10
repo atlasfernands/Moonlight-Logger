@@ -33,7 +33,7 @@ exports.logsRouter.post('/', async (req, res) => {
 exports.logsRouter.get('/', async (req, res) => {
     if (!mongo_1.mongoStatus.connected)
         return res.status(503).json({ error: 'mongo_offline' });
-    const { level, tag, q, limit = '50', page = '1', from, to, paginate } = req.query;
+    const { level, tag, q, limit = '50', page = '1', from, to, paginate, hasSource } = req.query;
     const query = {};
     if (level)
         query.level = level;
@@ -47,6 +47,9 @@ exports.logsRouter.get('/', async (req, res) => {
             query.timestamp.$gte = new Date(from);
         if (to)
             query.timestamp.$lte = new Date(to);
+    }
+    if (typeof hasSource === 'string' && ['true', '1', 'yes', 'on'].includes(hasSource.toLowerCase())) {
+        query['context.file'] = { $exists: true };
     }
     const limitNumber = Math.min(Math.max(Number(limit) || 50, 1), 100);
     const pageNumber = Math.max(Number(page) || 1, 1);

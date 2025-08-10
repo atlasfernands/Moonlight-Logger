@@ -21,7 +21,11 @@ type LogItem = {
   timestamp: string;
   tags?: string[];
   suggestion?: string;
-  context?: { file?: string; line?: number; column?: number };
+  file?: string;
+  line?: number;
+  column?: number;
+  source?: string;
+  ai?: { classification?: string; explanation?: string; suggestion?: string; provider?: string };
 };
 
 function App() {

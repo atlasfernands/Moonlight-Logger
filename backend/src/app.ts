@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { logsRouter } from './routes/logs';
 import { statsRouter } from './routes/stats';
+import { ingestRouter } from './routes/ingest';
 
 export function createApp() {
   const app = express();
@@ -11,6 +12,7 @@ export function createApp() {
   app.get('/health', (_req, res) => res.json({ ok: true }));
   app.use('/api/logs', logsRouter);
   app.use('/api/stats', statsRouter);
+  app.use('/api/ingest', ingestRouter);
 
   return app;
 }

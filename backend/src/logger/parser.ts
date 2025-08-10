@@ -5,6 +5,14 @@ export interface ParsedLog {
   column?: number;
 }
 
+export interface RawLog {
+  timestamp?: Date | string;
+  level: 'info' | 'warn' | 'error' | 'debug';
+  message: string;
+  stack?: string;
+  source?: string;
+}
+
 // Tenta extrair arquivo:linha:col de mensagens/stack do Node
 // Exemplos que cobre:
 //  - at Object.<anonymous> (src/index.ts:12:34)
@@ -23,6 +31,20 @@ export function parseLogMessage(raw: unknown): ParsedLog {
   if (line) result.line = Number(line);
   if (column) result.column = Number(column);
   return result;
+}
+
+// Constrói um objeto parcial para persistência em LogModel, combinando RawLog + parse de stack/mensagem
+export function parseRawLogToDoc(raw: RawLog) {
+  const parsed = parseLogMessage(`${raw.stack ?? ''}\n${raw.message ?? ''}`);
+  return {
+    level: raw.level,
+    message: raw.message,
+    timestamp: new Date(raw.timestamp ?? Date.now()),
+    file: parsed.file,
+    line: parsed.line,
+    column: parsed.column,
+    source: raw.source,
+  };
 }
 
 function safeStringify(value: unknown): string {
