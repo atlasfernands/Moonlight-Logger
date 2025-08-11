@@ -83,21 +83,48 @@ cp config.json.example config.json
 
 ## ⚙️ Configuração
 
-### Arquivo `config.json`
+### Pipeline Híbrido - Variáveis de Ambiente
+
+O Moonlight Logger usa um **pipeline híbrido inteligente** que garante funcionalidade offline sempre, com IA opcional:
+
+```bash
+# backend/.env
+AI_PROVIDER=offline          # offline, hybrid, ai-only
+AI_ENABLED=false            # true/false (só usado se AI_PROVIDER != offline)
+
+# Configurações de IA (opcionais)
+OPENAI_API_KEY=your_key     # Só usado se AI_PROVIDER != offline
+OPENAI_BASE_URL=https://api.openai.com/v1
+```
+
+### Modos de Operação
+
+| Modo | Heurísticas | IA | Uso |
+|------|-------------|----|-----|
+| `offline` | ✅ Sempre | ❌ Nunca | Padrão, garante funcionalidade |
+| `hybrid` | ✅ Sempre | ✅ Condicional | Recomendado, combina ambos |
+| `ai-only` | ❌ Nunca | ✅ Sempre | Máxima precisão, requer API |
+
+### Arquivo `config.json` (Avançado)
 ```json
 {
-  "analysisMode": "hybrid",
   "aiProvider": "openai",
   "aiApiKey": "YOUR_OPENAI_API_KEY",
   "aiModel": "gpt-3.5-turbo",
   "enableRealTimeAnalysis": true,
-  "analysisCacheTTL": 3600
+  "analysisCacheTTL": 3600,
+  "heuristicRules": [
+    {
+      "pattern": "error|exception|fail",
+      "classification": "Error",
+      "explanation": "Log contém indicadores de erro",
+      "suggestion": "Verificar stack trace e contexto",
+      "priority": 1,
+      "tags": ["error", "critical"]
+    }
+  ]
 }
 ```
-
-### Variáveis de Ambiente
-```bash
-# Backend
 PORT=4000
 MONGODB_URI=mongodb://localhost:27017/moonlight
 REDIS_URL=redis://localhost:6379
@@ -158,14 +185,136 @@ cd backend && npm start
 - `log-analyzed` - Log analisado
 - `log-updated` - Log atualizado
 
-## 🧠 Regras Heurísticas
+## 🧠 Pipeline Híbrido de Análise
 
-O sistema inclui regras pré-definidas para:
+### Como Funciona
+
+O Moonlight Logger implementa um **pipeline híbrido inteligente** que garante funcionalidade sempre:
+
+1. **🔍 Heurísticas Sempre Ativas**: Regras pré-definidas analisam logs instantaneamente
+2. **🤖 IA Condicional**: Só é acionada se configurada e disponível
+3. **🔄 Fallback Inteligente**: Se IA falhar, heurísticas continuam funcionando
+4. **⚡ Performance Otimizada**: Análise rápida + inteligência quando necessário
+
+### Regras Heurísticas Pré-definidas
+
+O sistema inclui regras para:
 - **Erros de Sistema**: Padrões de erro, exceções, falhas
 - **Problemas de Banco**: Conexões, timeouts, erros de query
 - **Issues de API**: Timeouts, erros HTTP, falhas de rede
 - **Problemas de Memória**: Vazamentos, uso excessivo
 - **Avisos e Deprecações**: Warnings, código obsoleto
+
+### Configuração Rápida
+
+```bash
+# Modo offline (padrão) - funciona imediatamente
+AI_PROVIDER=offline
+
+# Modo híbrido - heurísticas + IA quando disponível
+AI_PROVIDER=hybrid
+OPENAI_API_KEY=your_key
+
+# Modo IA-only - máxima precisão
+AI_PROVIDER=ai-only
+OPENAI_API_KEY=your_key
+```
+
+## 🧪 Stress Testing & Robustez
+
+### Testes de Carga Automatizados
+
+O Moonlight Logger inclui um sistema completo de stress testing:
+
+```bash
+# Teste rápido (10k logs)
+./scripts/stress-test.sh --quick
+
+# Teste de produção (100k logs)
+./scripts/stress-test.sh --production
+
+# Teste de caos (50k logs malformados)
+./scripts/stress-test.sh --chaos
+
+# Suite completa de testes
+./scripts/stress-test.sh --full-suite
+
+# Teste customizado
+./scripts/stress-test.sh -t 50000 -b 500 -p wave -m true
+```
+
+### Padrões de Tráfego Simulados
+
+- **Steady**: Tráfego constante e previsível
+- **Spike**: Picos de tráfego seguidos de reduções
+- **Wave**: Ondas de tráfego com intensidade variável
+- **Chaos**: Tráfego caótico e imprevisível
+
+### Métricas em Tempo Real
+
+- **Throughput**: Logs por segundo
+- **Latência**: Tempo médio de processamento
+- **Taxa de Erro**: Logs perdidos/falhados
+- **Resiliência**: Comportamento sob carga extrema
+
+## 🔍 Parsing Inteligente Multi-Formato
+
+### Formatos Suportados
+
+O parser inteligente detecta e processa automaticamente:
+
+- **JSON**: Logs estruturados com metadados
+- **Nginx**: Logs de servidor web
+- **Node.js**: Stack traces e logs de aplicação
+- **Texto**: Logs não estruturados com heurísticas
+- **Custom**: Formatos específicos de frameworks
+
+### Extração Automática
+
+- **Timestamps**: ISO, Unix, formatos customizados
+- **Níveis**: INFO, WARN, ERROR, DEBUG
+- **Contexto**: Arquivo, linha, coluna, stack traces
+- **Métricas**: IPs, URLs, IDs de sessão, valores numéricos
+
+### Fallback Inteligente
+
+Quando heurísticas não conseguem entender um log:
+1. **Análise de Padrões**: Regex avançados para detecção
+2. **Classificação por Confiança**: Score 0-1 para qualidade da extração
+3. **Fallback para IA**: Envio automático para análise de IA (se configurada)
+
+## 🐳 Infraestrutura Escalável
+
+### Docker Compose Enterprise
+
+```bash
+# Iniciar toda a infraestrutura
+docker-compose up -d
+
+# Escalar backend horizontalmente
+docker-compose up -d --scale logger-service=3
+
+# Monitoramento completo
+docker-compose up -d prometheus grafana fluentd
+```
+
+### Serviços Incluídos
+
+- **MongoDB**: Persistência de logs com autenticação
+- **Redis**: Fila em tempo real com senha
+- **Backend**: Serviço escalável (2+ instâncias)
+- **Frontend**: Dashboard responsivo
+- **Nginx**: Load balancer e proxy reverso
+- **Prometheus**: Coleta de métricas
+- **Grafana**: Visualização e alertas
+- **Fluentd**: Agregação de logs estruturados
+
+### Escalabilidade Horizontal
+
+- **Auto-scaling**: Baseado em métricas de CPU/memória
+- **Load Balancing**: Distribuição inteligente de carga
+- **Health Checks**: Monitoramento automático de serviços
+- **Graceful Shutdown**: Parada segura sem perda de dados
 
 ## 🎯 Casos de Uso
 

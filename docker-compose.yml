@@ -1,37 +1,240 @@
-version: '3.9'
+version: '3.8'
+
 services:
+  # MongoDB - Persistência de logs
   mongo:
     image: mongo:6
+    container_name: moonlight-mongo
+    restart: unless-stopped
     ports:
-      - '27017:27017'
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: moonlight123
+      MONGO_INITDB_DATABASE: moonlightlogger
     volumes:
       - mongo_data:/data/db
+      - ./backend/scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - moonlight-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis - Fila em tempo real
   redis:
-    image: redis:7
+    image: redis:7-alpine
+    container_name: moonlight-redis
+    restart: unless-stopped
     ports:
-      - '6379:6379'
-  backend:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass moonlight123
+    volumes:
+      - redis_data:/data
+    networks:
+      - moonlight-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend - Serviço de logging (escalável)
+  logger-service:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    depends_on:
-      - mongo
-      - redis
-    environment:
-      - PORT=4000
-      - MONGO_URI=mongodb://mongo:27017/moonlightlogger
-      - REDIS_URL=redis://redis:6379
-      - NODE_ENV=production
+    container_name: moonlight-backend
+    restart: unless-stopped
     ports:
-      - '4000:4000'
-  frontend:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MONGO_URI: mongodb://admin:moonlight123@mongo:27017/moonlightlogger?authSource=admin
+      REDIS_URL: redis://:moonlight123@redis:6379
+      AI_PROVIDER: offline
+      AI_ENABLED: false
+      LOG_LEVEL: info
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - moonlight-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # Frontend - Dashboard UI
+  dashboard-ui:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: moonlight-frontend
+    restart: unless-stopped
     ports:
-      - '5173:5173'
+      - "3000:3000"
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      VITE_API_URL: http://localhost:4000
+      VITE_WS_URL: ws://localhost:4000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - logger-service
+    networks:
+      - moonlight-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx - Load Balancer e Proxy Reverso
+  nginx:
+    image: nginx:alpine
+    container_name: moonlight-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - logger-service
+      - dashboard-ui
+    networks:
+      - moonlight-network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoramento - Prometheus + Grafana
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: moonlight-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - moonlight-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: moonlight-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: moonlight123
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    networks:
+      - moonlight-network
+
+  # Log Aggregator - Fluentd para logs estruturados
+  fluentd:
+    image: fluent/fluentd:v1.16-1
+    container_name: moonlight-fluentd
+    restart: unless-stopped
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    volumes:
+      - ./monitoring/fluentd/fluent.conf:/fluentd/etc/fluent.conf:ro
+      - fluentd_data:/fluentd/log
+    networks:
+      - moonlight-network
+
+  # Stress Test - Gerador de carga para testes
+  stress-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.stress
+    container_name: moonlight-stress-test
+    restart: "no"
+    environment:
+      NODE_ENV: test
+      MONGO_URI: mongodb://admin:moonlight123@mongo:27017/moonlightlogger?authSource=admin
+      REDIS_URL: redis://:moonlight123@redis:6379
+    depends_on:
+      - logger-service
+    networks:
+      - moonlight-network
+    profiles:
+      - stress-test
+
 volumes:
   mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  fluentd_data:
+    driver: local
+
+networks:
+  moonlight-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Configurações de deploy
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-healthcheck: &default-healthcheck
+  test: ["CMD-SHELL", "exit 0"]
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
 

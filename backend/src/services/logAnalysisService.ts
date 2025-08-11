@@ -1,5 +1,6 @@
 import { AnalysisConfig, HeuristicRule, loadAnalysisConfig } from '../config/analysis';
 import { LogModel } from '../models/Log';
+import { env } from '../config/env';
 
 export interface LogAnalysis {
   classification: string;
@@ -22,26 +23,33 @@ export class LogAnalysisService {
   }
 
   private async initializeAIProvider() {
-    if (this.config.analysisMode === 'offline') return;
+    // Pipeline Híbrido: IA só é inicializada se não estiver em modo offline
+    if (env.aiProvider === 'offline') {
+      console.log('🔍 Modo offline: apenas análise heurística ativa');
+      return;
+    }
 
     try {
       switch (this.config.aiProvider) {
         case 'openai':
           this.aiProvider = await this.setupOpenAI();
+          console.log('🤖 Provedor OpenAI inicializado');
           break;
         case 'anthropic':
           this.aiProvider = await this.setupAnthropic();
+          console.log('🤖 Provedor Anthropic inicializado');
           break;
         case 'local':
           this.aiProvider = await this.setupLocalAI();
+          console.log('🤖 Provedor Local inicializado');
           break;
         default:
           console.warn(`Provedor de IA não suportado: ${this.config.aiProvider}`);
       }
     } catch (error) {
       console.error('Erro ao inicializar provedor de IA:', error);
-      console.warn('Falling back para modo offline');
-      this.config.analysisMode = 'offline';
+      console.warn('🔄 Fallback para modo offline (heurísticas)');
+      // Não altera a configuração, apenas desabilita a IA para esta instância
     }
   }
 
@@ -110,24 +118,23 @@ export class LogAnalysisService {
     let analysis: LogAnalysis;
 
     try {
-      switch (this.config.analysisMode) {
-        case 'offline':
-          analysis = await this.analyzeWithHeuristics(message, context);
-          break;
-        
-        case 'ai-only':
-          if (!this.aiProvider) {
-            throw new Error('Provedor de IA não disponível');
-          }
-          analysis = await this.analyzeWithAI(message, context);
-          break;
-        
-        case 'hybrid':
-          analysis = await this.analyzeHybrid(message, context);
-          break;
-        
-        default:
-          throw new Error(`Modo de análise não suportado: ${this.config.analysisMode}`);
+      // Pipeline Híbrido: Heurísticas sempre rodam, IA é condicional
+      if (env.aiProvider === 'offline') {
+        // Modo offline: apenas heurísticas
+        analysis = await this.analyzeWithHeuristics(message, context);
+      } else if (env.aiProvider === 'ai-only') {
+        // Modo IA apenas: requer provedor disponível
+        if (!this.aiProvider) {
+          throw new Error('Provedor de IA não disponível para modo ai-only');
+        }
+        analysis = await this.analyzeWithAI(message, context);
+      } else if (env.aiProvider === 'hybrid') {
+        // Modo híbrido: combina heurísticas + IA
+        analysis = await this.analyzeHybrid(message, context);
+      } else {
+        // Fallback para offline se configuração inválida
+        console.warn(`Configuração AI_PROVIDER inválida: ${env.aiProvider}, usando modo offline`);
+        analysis = await this.analyzeWithHeuristics(message, context);
       }
 
       analysis.processingTime = Date.now() - startTime;
@@ -220,30 +227,46 @@ export class LogAnalysisService {
   }
 
   private async analyzeHybrid(message: string, context: any): Promise<LogAnalysis> {
-    // Primeiro tenta heurísticas (rápido)
+    // Pipeline Híbrido: Heurísticas sempre rodam primeiro
     const heuristicResult = await this.analyzeWithHeuristics(message, context);
     
-    // Se heurísticas têm baixa confiança, tenta IA
-    if (heuristicResult.confidence < 0.6 && this.aiProvider) {
+    // IA é acionada condicionalmente baseada na confiança das heurísticas
+    if (heuristicResult.confidence < 0.7 && this.aiProvider) {
       try {
+        console.log('🤖 Modo híbrido: acionando IA para melhorar análise');
         const aiResult = await this.analyzeWithAI(message, context);
         
-        // Combina resultados (heurísticas + IA)
+        // Combina resultados (heurísticas + IA) com pesos inteligentes
+        const combinedConfidence = Math.min(0.95, 
+          (heuristicResult.confidence * 0.4) + (aiResult.confidence * 0.6)
+        );
+        
         return {
-          classification: aiResult.classification,
-          explanation: `${heuristicResult.explanation} + ${aiResult.explanation}`,
+          classification: aiResult.classification || heuristicResult.classification,
+          explanation: `Heurísticas: ${heuristicResult.explanation} | IA: ${aiResult.explanation}`,
           suggestion: aiResult.suggestion || heuristicResult.suggestion,
-          confidence: Math.min(0.95, (heuristicResult.confidence + aiResult.confidence) / 2),
+          confidence: combinedConfidence,
           source: 'hybrid',
           tags: [...new Set([...heuristicResult.tags, ...aiResult.tags])],
           processingTime: 0
         };
       } catch (error) {
-        console.warn('IA falhou no modo híbrido, usando apenas heurísticas:', error);
+        console.warn('🔄 IA falhou no modo híbrido, usando apenas heurísticas:', error);
+        // Fallback gracioso para heurísticas
+        return {
+          ...heuristicResult,
+          source: 'heuristic',
+          tags: [...heuristicResult.tags, 'ai-fallback']
+        };
       }
     }
     
-    return heuristicResult;
+    // Se heurísticas têm alta confiança, retorna direto
+    return {
+      ...heuristicResult,
+      source: 'heuristic',
+      tags: [...heuristicResult.tags, 'high-confidence']
+    };
   }
 
   private async updateLogWithAnalysis(logId: string, analysis: LogAnalysis): Promise<void> {

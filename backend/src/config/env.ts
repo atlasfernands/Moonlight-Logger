@@ -12,13 +12,12 @@ export const env = {
   openaiApiKey: process.env.OPENAI_API_KEY,
   openaiBaseUrl: process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
   
-  // AI Service Configuration
-  aiEnabled: process.env.AI_ENABLED !== 'false', // enabled by default
-  aiProvider: process.env.AI_PROVIDER ?? 'auto', // auto, openai, local, mock
+  // AI Service Configuration - Pipeline Híbrido
+  aiProvider: process.env.AI_PROVIDER ?? 'offline', // offline, hybrid, ai-only
+  aiEnabled: process.env.AI_ENABLED === 'true' && process.env.AI_PROVIDER !== 'offline',
   
   // Logging Configuration
   logLevel: process.env.LOG_LEVEL ?? 'info',
-  enableAIAnalysis: process.env.ENABLE_AI_ANALYSIS !== 'false', // enabled by default
 };
 
 export const isProduction = env.nodeEnv === 'production';
