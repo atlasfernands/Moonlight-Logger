@@ -9,6 +9,8 @@ import { StatCard } from './components/ui/StatCard';
 import { RecentLogsTable } from './components/logs/RecentLogsTable';
 import { ActivityMini } from './components/charts/ActivityMini';
 import { NewLogModal } from './components/logs/NewLogModal';
+import { Settings } from './components/pages/Settings';
+import { About } from './components/pages/About';
 import { Suspense, lazy } from 'react';
 const LogsByLevel = lazy(() => import('./components/charts/LogsByLevel').then(m => ({ default: m.LogsByLevel })));
 const LogsTimeline = lazy(() => import('./components/charts/LogsTimeline').then(m => ({ default: m.LogsTimeline })));
@@ -28,7 +30,10 @@ type LogItem = {
   ai?: { classification?: string; explanation?: string; suggestion?: string; provider?: string };
 };
 
+type Page = 'dashboard' | 'settings' | 'about';
+
 function App() {
+  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [logs, setLogs] = useState<LogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,71 +111,90 @@ function App() {
       .catch(() => void 0);
   }, [filters]);
 
-  return (
-    <div className="min-h-screen text-neutral-100 dashboard-bg dashboard-font">
-      <Header />
-      <div className="max-w-6xl mx-auto flex">
-        <Sidebar />
-        <main className="flex-1 px-4 py-6 space-y-6">
-          {error && (
-            <div role="status" aria-live="polite" className="glass-card border border-amber-600/40">
-              <div className="p-3 text-amber-300 text-sm">{error} Verifique se MongoDB e Redis estão rodando. O app tenta reconectar automaticamente.</div>
-            </div>
-          )}
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-3">
-              <Filters
-                values={filters}
-                onApply={(f) => { setPage(1); setFilters(f); }}
-                onClear={() => { setPage(1); setFilters({}); }}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 lg:col-span-3">
-              <StatCard label="Total Logs" value={totalCount} />
-              <StatCard label="Errors" value={byLevel.find(b => b.level==='error')?.count ?? 0} highlight="secondary" />
-              <StatCard label="Warnings" value={byLevel.find(b => b.level==='warn')?.count ?? 0} highlight="secondary" />
-              <ActivityMini
-                data={timeline.map(t => ({ t: t.time, v: (t.info ?? 0)+(t.warn ?? 0)+(t.error ?? 0)+(t.debug ?? 0) }))}
-                actions={<NewLogModal onCreated={() => setPage(1)} />}
-              />
-            </div>
-
-            <Card title="Últimos logs" className="lg:col-span-2">
-              {loading ? (
-                <div className="p-6 text-neutral-400">Carregando...</div>
-              ) : (
-                <RecentLogsTable
-                  items={logs.slice(0, 10)}
-                  activeLevel={filters.level as any}
-                  onFilterLevel={(lvl) => { setPage(1); setFilters(s => ({ ...s, level: lvl } as any)); }}
-                />
-              )}
-              <div className="mt-3">
-                <Pagination page={page} pages={pages} onChange={setPage} />
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return (
+          <>
+            {error && (
+              <div role="status" aria-live="polite" className="glass-card border border-amber-600/40">
+                <div className="p-3 text-amber-300 text-sm">{error} Verifique se MongoDB e Redis estão rodando. O app tenta reconectar automaticamente.</div>
               </div>
-            </Card>
+            )}
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-3">
+                <Filters
+                  values={filters}
+                  onApply={(f) => { setPage(1); setFilters(f); }}
+                  onClear={() => { setPage(1); setFilters({}); }}
+                />
+              </div>
 
-            <div>
-              <Card title="Logs por nível">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 lg:col-span-3">
+                <StatCard label="Total Logs" value={totalCount} />
+                <StatCard label="Errors" value={byLevel.find(b => b.level==='error')?.count ?? 0} highlight="secondary" />
+                <StatCard label="Warnings" value={byLevel.find(b => b.level==='warn')?.count ?? 0} highlight="secondary" />
+                <ActivityMini
+                  data={timeline.map(t => ({ t: t.time, v: (t.info ?? 0)+(t.warn ?? 0)+(t.error ?? 0)+(t.debug ?? 0) }))}
+                  actions={<NewLogModal onCreated={() => setPage(1)} />}
+                />
+              </div>
+
+              <Card title="Últimos logs" className="lg:col-span-2">
+                {loading ? (
+                  <div className="p-6 text-neutral-400">Carregando...</div>
+                ) : (
+                  <RecentLogsTable
+                    items={logs.slice(0, 10)}
+                    activeLevel={filters.level as any}
+                    onFilterLevel={(lvl) => { setPage(1); setFilters(s => ({ ...s, level: lvl } as any)); }}
+                  />
+                )}
+                <div className="mt-3">
+                  <Pagination page={page} pages={pages} onChange={setPage} />
+                </div>
+              </Card>
+
+              <div>
+                <Card title="Logs por nível">
+                  <Suspense fallback={<div className="p-4 text-neutral-400">Carregando gráfico...</div>}>
+                    <LogsByLevel data={byLevel} />
+                  </Suspense>
+                </Card>
+              </div>
+            </section>
+
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card title="Timeline de logs" className="lg:col-span-3">
                 <Suspense fallback={<div className="p-4 text-neutral-400">Carregando gráfico...</div>}>
-                  <LogsByLevel data={byLevel} />
+                  <LogsTimeline data={timeline} />
                 </Suspense>
               </Card>
-              
-            </div>
-          </section>
+            </section>
+          </>
+        );
+      
+      case 'settings':
+        return <Settings />;
+      
+      case 'about':
+        return <About />;
+      
+      default:
+        return null;
+    }
+  };
 
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card title="Timeline de logs" className="lg:col-span-3">
-              <Suspense fallback={<div className="p-4 text-neutral-400">Carregando gráfico...</div>}>
-                <LogsTimeline data={timeline} />
-              </Suspense>
-            </Card>
-          </section>
+  return (
+    <div className="min-h-screen text-neutral-100 dashboard-bg dashboard-font">
+      <Header currentPage={currentPage} onPageChange={(page: Page) => setCurrentPage(page)} />
+      <div className="max-w-6xl mx-auto flex">
+        {currentPage === 'dashboard' && <Sidebar />}
+        <main className="flex-1 px-4 py-6 space-y-6">
+          {renderPage()}
         </main>
       </div>
-      </div>
+    </div>
   );
 }
 

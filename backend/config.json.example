@@ -1,0 +1,21 @@
+{
+  "analysisMode": "hybrid",
+  "aiProvider": "openai",
+  "aiApiKey": "YOUR_OPENAI_API_KEY_HERE",
+  "aiModel": "gpt-3.5-turbo",
+  "aiEndpoint": "https://api.openai.com/v1/chat/completions",
+  "enableRealTimeAnalysis": true,
+  "analysisCacheTTL": 3600,
+  "heuristicRules": [
+    {
+      "id": "custom-error-pattern",
+      "pattern": "custom error pattern",
+      "level": "error",
+      "classification": "Custom Error",
+      "explanation": "Erro personalizado detectado",
+      "suggestion": "Verificar configurações personalizadas",
+      "priority": 1,
+      "tags": ["custom", "error"]
+    }
+  ]
+}

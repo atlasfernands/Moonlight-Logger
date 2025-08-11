@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend do Moonlight Logger com análise inteligente de logs",
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
@@ -9,9 +9,11 @@
     "start": "node dist/server.js",
     "lint": "eslint . --ext .ts --max-warnings 0",
     "format": "prettier --write .",
-    "test": "echo \"No tests yet\""
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
-  "keywords": [],
+  "keywords": ["logger", "ai", "logs", "monitoring", "typescript"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -27,7 +29,8 @@
     "ioredis": "^5.7.0",
     "lodash": "^4.17.21",
     "mongoose": "^8.17.1",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "openai": "^4.28.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
@@ -38,6 +41,9 @@
     "eslint": "^9.33.0",
     "prettier": "^3.6.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.12",
+    "ts-jest": "^29.1.2"
   }
 }

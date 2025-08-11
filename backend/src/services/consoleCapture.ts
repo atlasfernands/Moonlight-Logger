@@ -1,99 +1,208 @@
-import type { Server } from 'socket.io';
-import { LogModel } from '../models/Log';
+import { LogModel, LogDocument } from '../models/Log';
 import { parseLogMessage } from '../logger/parser';
+import { LogAnalysisService } from './logAnalysisService';
+import { Server as SocketIOServer } from 'socket.io';
+import { Types } from 'mongoose';
 
-type LogLevel = 'info' | 'warn' | 'error';
+let io: SocketIOServer;
+let analysisService: LogAnalysisService;
 
-function formatArgs(args: unknown[]): string {
-  return args
-    .map((arg) => {
-      if (typeof arg === 'string') return arg;
-      if (arg instanceof Error) return arg.stack ?? `${arg.name}: ${arg.message}`;
-      try {
-        return JSON.stringify(arg);
-      } catch {
-        return String(arg);
-      }
-    })
-    .join(' ');
+export function installConsoleCapture(socketIO: SocketIOServer) {
+  io = socketIO;
+  analysisService = new LogAnalysisService();
+  
+  console.log('🔍 Console capture instalado com análise híbrida');
+  
+  // Intercepta console.log
+  const originalLog = console.log;
+  console.log = function(...args: any[]) {
+    originalLog.apply(console, args);
+    captureLog('info', args);
+  };
+
+  // Intercepta console.warn
+  const originalWarn = console.warn;
+  console.warn = function(...args: any[]) {
+    originalWarn.apply(console, args);
+    captureLog('warn', args);
+  };
+
+  // Intercepta console.error
+  const originalError = console.error;
+  console.error = function(...args: any[]) {
+    originalError.apply(console, args);
+    captureLog('error', args);
+  };
+
+  // Intercepta console.debug
+  const originalDebug = console.debug;
+  console.debug = function(...args: any[]) {
+    originalDebug.apply(console, args);
+    captureLog('debug', args);
+  };
+
+  // Captura erros não tratados
+  process.on('uncaughtException', (error: Error) => {
+    captureUnhandledError('uncaughtException', error);
+  });
+
+  process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+    captureUnhandledError('unhandledRejection', reason);
+  });
 }
 
-async function persistAndEmit(
-  io: Server,
-  level: LogLevel,
-  message: string,
-  context: Record<string, unknown>
-): Promise<void> {
+async function captureLog(level: 'info' | 'warn' | 'error' | 'debug', args: any[]) {
   try {
+    const message = normalizeLogMessage(args);
     const parsed = parseLogMessage(message);
-    const created = await LogModel.create({
+    
+    const logData = {
       level,
-      message: parsed.message,
-      context: { ...context, file: parsed.file, line: parsed.line, column: parsed.column },
-    });
-    io.emit('log-created', created);
-  } catch {
-    // Evita loops/erros caso Mongo caia; não faz console.* aqui para não recursar
+      message,
+      timestamp: new Date(),
+      tags: [],
+      context: {
+        origin: 'console',
+        pid: process.pid,
+        ...(parsed.file && { file: parsed.file }),
+        ...(parsed.line && { line: parsed.line }),
+        ...(parsed.column && { column: parsed.column })
+      }
+    };
+
+    const log = new LogModel(logData);
+    await log.save();
+    const savedLog = log as LogDocument;
+
+    // Análise automática em background
+    try {
+      await analyzeLogInBackground(
+        typeof savedLog._id === 'object' && savedLog._id !== null && 'toString' in savedLog._id
+          ? savedLog._id.toString()
+          : String(savedLog._id),
+        message,
+        logData.context
+      );
+    } catch (err) {
+      console.error('Erro ao analisar log em background:', err);
+    }
+
+    // Emite para frontend em tempo real
+    if (io) {
+      const logId =
+        typeof savedLog._id === 'object' && savedLog._id !== null && 'toString' in savedLog._id
+          ? savedLog._id.toString()
+          : String(savedLog._id);
+
+      io.emit('log-created', {
+        _id: logId,
+        ...logData,
+        ai: { classification: 'Analyzing...', explanation: '', suggestion: '' }
+      });
+    }
+
+  } catch (error) {
+    console.error('Erro ao capturar log:', error);
   }
 }
 
-export function installConsoleCapture(io: Server): void {
-  if ((global as any).__moon_console_capture_installed) return;
-  (global as any).__moon_console_capture_installed = true;
+async function captureUnhandledError(type: string, error: Error | any) {
+  try {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : '';
+    
+    const logData = {
+      level: 'error' as const,
+      message: `${type}: ${message}`,
+      timestamp: new Date(),
+      tags: ['unhandled', type],
+      context: {
+        origin: type,
+        pid: process.pid,
+        stack
+      }
+    };
 
-  const original = {
-    log: console.log.bind(console),
-    warn: console.warn.bind(console),
-    error: console.error.bind(console),
-  } as const;
+    const log = new LogModel(logData);
+    await log.save();
+    const savedLog = log as LogDocument;
+    const logId = (savedLog._id as Types.ObjectId).toString();
 
-  console.log = (...args: unknown[]) => {
-    const message = formatArgs(args);
-    void persistAndEmit(io, 'info', message, {
-      origin: 'console.log',
-      pid: process.pid,
+    // Análise automática em background
+    analyzeLogInBackground(logId, message, logData.context);
+
+    // Emite para frontend em tempo real
+    if (io) {
+      io.emit('log-created', {
+        _id: logId,
+        ...logData,
+        ai: { classification: 'Analyzing...', explanation: '', suggestion: '' }
+      });
+    }
+
+  } catch (captureError) {
+    console.error('Erro ao capturar erro não tratado:', captureError);
+  }
+}
+
+async function analyzeLogInBackground(logId: string, message: string, context: any) {
+  try {
+    // Análise em background para não bloquear o fluxo principal
+    setImmediate(async () => {
+      try {
+        const analysis = await analysisService.analyzeLog(logId, message, context);
+        
+        // Atualiza o log com a análise
+        await LogModel.findByIdAndUpdate(logId, {
+          'ai.classification': analysis.classification,
+          'ai.explanation': analysis.explanation,
+          'ai.suggestion': analysis.suggestion,
+          'ai.provider': analysis.source,
+          tags: analysis.tags
+        });
+
+        // Emite atualização para o frontend
+        if (io) {
+          io.emit('log-analyzed', {
+            logId,
+            analysis: {
+              classification: analysis.classification,
+              explanation: analysis.explanation,
+              suggestion: analysis.suggestion,
+              provider: analysis.source,
+              confidence: analysis.confidence,
+              tags: analysis.tags
+            }
+          });
+        }
+
+      } catch (analysisError) {
+        console.error('Erro na análise automática:', analysisError);
+      }
     });
-    original.log(...(args as any));
-  };
 
-  console.warn = (...args: unknown[]) => {
-    const message = formatArgs(args);
-    void persistAndEmit(io, 'warn', message, {
-      origin: 'console.warn',
-      pid: process.pid,
-    });
-    original.warn(...(args as any));
-  };
+  } catch (error) {
+    console.error('Erro ao agendar análise:', error);
+  }
+}
 
-  console.error = (...args: unknown[]) => {
-    const message = formatArgs(args);
-    void persistAndEmit(io, 'error', message, {
-      origin: 'console.error',
-      pid: process.pid,
-    });
-    original.error(...(args as any));
-  };
+function normalizeLogMessage(args: any[]): string {
+  return args.map(arg => {
+    if (typeof arg === 'string') return arg;
+    if (arg instanceof Error) return arg.stack || arg.message;
+    if (typeof arg === 'object') {
+      try {
+        return JSON.stringify(arg, null, 2);
+      } catch {
+        return String(arg);
+      }
+    }
+    return String(arg);
+  }).join(' ');
+}
 
-  process.on('uncaughtException', (err) => {
-    const message = err?.stack ?? err?.message ?? String(err);
-    void persistAndEmit(io, 'error', message, {
-      origin: 'uncaughtException',
-      pid: process.pid,
-    });
-    original.error('[uncaughtException]', err);
-  });
-
-  process.on('unhandledRejection', (reason: unknown) => {
-    const message =
-      reason instanceof Error
-        ? reason.stack ?? reason.message
-        : formatArgs([reason]);
-    void persistAndEmit(io, 'error', message, {
-      origin: 'unhandledRejection',
-      pid: process.pid,
-    });
-    original.error('[unhandledRejection]', reason as any);
-  });
+export function getAnalysisService(): LogAnalysisService {
+  return analysisService;
 }
 
 

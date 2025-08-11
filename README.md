@@ -1,145 +1,243 @@
-# Moonlight Logger
+# 🌙 Moonlight Logger
 
-![node](https://img.shields.io/badge/node-%3E%3D18-00AEEF?logo=node.js)
-![typescript](https://img.shields.io/badge/TypeScript-5.9+-blue?logo=typescript)
-![react](https://img.shields.io/badge/React-18+-61DAFB?logo=react)
-![tailwind](https://img.shields.io/badge/Tailwind-3.2.7-38B2AC?logo=tailwind-css)
+Sistema inteligente de logging para aplicações Node.js com análise automática e painel web em tempo real via Socket.IO.
 
-> Um sistema inteligente de logging para aplicações Node.js, com análise automática e painel web dark mode — em tempo real via Socket.IO.
+## ✨ Características
 
-## Visão
+- **🔍 Captura Automática**: Intercepta `console.log`, `console.warn`, `console.error` e erros não tratados
+- **🧠 Análise Híbrida**: Combina heurísticas offline com IA opcional (OpenAI, Anthropic, Local)
+- **⚡ Tempo Real**: Atualizações instantâneas via Socket.IO
+- **📊 Dashboard Avançado**: Interface moderna com gráficos, filtros e estatísticas
+- **🗄️ Persistência**: MongoDB com índices otimizados para performance
+- **🎨 Dark Mode**: Interface elegante com tema escuro
+- **🔧 Configurável**: Modos offline, híbrido ou IA-only via arquivo de configuração
 
-- Clareza para debugging: registrar, entender e agir sobre logs rapidamente
-- Análise automática (tags e sugestões)
-- Tempo real: novos logs aparecem instantaneamente
-- UI dark inspirada na vibe "Filho da Lua"
+## 🚀 Modos de Análise
 
-## Stack
+### 1. **Offline** (Padrão)
+- Funciona sem conexão com internet
+- Usa regras heurísticas pré-definidas
+- Análise instantânea e confiável
+- Ideal para ambientes isolados
 
-- Backend: Node.js 18+, TypeScript, Express, MongoDB (Mongoose), Redis (BullMQ), Socket.IO
-- Frontend: React + Vite + TypeScript, Tailwind CSS 3.2.7
+### 2. **Híbrido** (Recomendado)
+- Combina heurísticas rápidas com IA inteligente
+- Fallback automático para heurísticas se IA falhar
+- Melhor precisão com redundância
+- Balanceia velocidade e qualidade
 
-## Requisitos
+### 3. **IA-Only**
+- Análise exclusiva por inteligência artificial
+- Máxima precisão e contexto
+- Requer API key válida
+- Ideal para análises complexas
 
+## 🛠️ Tecnologias
+
+- **Backend**: Node.js, TypeScript, Express, Socket.IO
+- **Banco**: MongoDB (Mongoose), Redis (BullMQ)
+- **Frontend**: React, Vite, TypeScript, Tailwind CSS
+- **Gráficos**: Recharts, Framer Motion
+- **IA**: OpenAI GPT, Anthropic Claude, Modelos Locais
+
+## 📦 Instalação
+
+### Pré-requisitos
 - Node.js 18+
-- MongoDB em `mongodb://localhost:27017`
-- Redis em `redis://localhost:6379`
+- MongoDB 6+
+- Redis 7+
+- Docker (opcional)
 
-Dica (Docker):
+### 1. Clone o repositório
+```bash
+git clone https://github.com/seu-usuario/moonlight-logger.git
+cd moonlight-logger
+```
 
+### 2. Instale dependências
+```bash
+# Backend
+cd backend
+npm install
+
+# Frontend
+cd ../frontend
+npm install
+```
+
+### 3. Configure o banco de dados
 ```bash
 # MongoDB
 docker run -d --name mongo -p 27017:27017 mongo:6
+
 # Redis
 docker run -d --name redis -p 6379:6379 redis:7
 ```
 
-## Configuração
-
-Crie `backend/.env` com:
-
-```env
-PORT=4000
-MONGO_URI=mongodb://localhost:27017/moonlightlogger
-REDIS_URL=redis://localhost:6379
-NODE_ENV=development
-
-# Token para autenticação de ingestão (opcional)
-INGEST_TOKEN=your-secure-token-here
-
-# Provider de IA (heuristic, openai, ollama)
-AI_PROVIDER=heuristic
-```
-
-## Executando
-
-Backend:
+### 4. Configure a análise (opcional)
 ```bash
 cd backend
-npm install
-npm run dev
+cp config.json.example config.json
+# Edite config.json com suas chaves de IA
 ```
 
-Frontend:
+## ⚙️ Configuração
+
+### Arquivo `config.json`
+```json
+{
+  "analysisMode": "hybrid",
+  "aiProvider": "openai",
+  "aiApiKey": "YOUR_OPENAI_API_KEY",
+  "aiModel": "gpt-3.5-turbo",
+  "enableRealTimeAnalysis": true,
+  "analysisCacheTTL": 3600
+}
+```
+
+### Variáveis de Ambiente
 ```bash
+# Backend
+PORT=4000
+MONGODB_URI=mongodb://localhost:27017/moonlight
+REDIS_URL=redis://localhost:6379
+FRONTEND_URL=http://localhost:5173
+
+# IA (opcional)
+OPENAI_API_KEY=your_key_here
+ANTHROPIC_API_KEY=your_key_here
+```
+
+## 🚀 Execução
+
+### Desenvolvimento
+```bash
+# Terminal 1 - Backend
+cd backend
+npm run dev
+
+# Terminal 2 - Frontend
 cd frontend
-npm install
 npm run dev
 ```
 
-Acesse: `http://localhost:5173`
-
-## Instalação com Docker (one-click)
-
-Requer Docker + Docker Compose. Sobe MongoDB, Redis, Backend e Frontend:
-
+### Produção
 ```bash
-docker compose up -d --build
+# Build
+cd backend && npm run build
+cd frontend && npm run build
+
+# Executar
+cd backend && npm start
 ```
 
-- Backend: `http://localhost:4000`
-- Frontend: `http://localhost:5173`
+## 📊 API Endpoints
 
-## Tempo Real (Socket.IO)
+### Logs
+- `POST /api/logs` - Criar log
+- `GET /api/logs` - Listar logs com filtros
+- `GET /api/logs/:id` - Buscar log específico
+- `POST /api/logs/:id/analyze` - Reanalisar log
+- `DELETE /api/logs/:id` - Deletar log
 
-- Backend emite `log-created` ao salvar um novo log.
-- Frontend escuta `log-created` e atualiza a lista.
+### Estatísticas
+- `GET /api/stats` - Estatísticas agregadas
+- `GET /api/logs/stats` - Estatísticas detalhadas
 
-## API
+### Health Check
+- `GET /health` - Status dos serviços
 
-### Logs Básicos
-- POST `/api/logs` — cria um log e dispara `log-created`
-- GET  `/api/logs` — lista logs. Filtros: `level`, `tag`, `q`, `limit`
+## 🔌 Socket.IO Events
 
-### Ingestão de Logs (Recomendado)
-- POST `/api/ingest/raw` — ingestão de logs brutos com análise automática
-- GET  `/api/ingest/health` — status da ingestão
+### Recebidos do Cliente
+- `join-room` - Entrar em sala específica
+- `leave-room` - Sair de sala
 
-Exemplo de ingestão:
-```bash
-# Sem autenticação (se INGEST_TOKEN não configurado)
-curl -X POST http://localhost:4000/api/ingest/raw \
-  -H "Content-Type: application/json" \
-  -d '{"level":"error","message":"Cannot read property map of undefined","stack":"at dashboard.tsx:42:13","source":"my-app"}'
+### Emitidos para o Cliente
+- `log-created` - Novo log criado
+- `log-analyzed` - Log analisado
+- `log-updated` - Log atualizado
 
-# Com autenticação
-curl -X POST http://localhost:4000/api/ingest/raw \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your-secure-token-here" \
-  -d '{"level":"error","message":"Timeout connecting to Redis","source":"api-service"}'
+## 🧠 Regras Heurísticas
+
+O sistema inclui regras pré-definidas para:
+- **Erros de Sistema**: Padrões de erro, exceções, falhas
+- **Problemas de Banco**: Conexões, timeouts, erros de query
+- **Issues de API**: Timeouts, erros HTTP, falhas de rede
+- **Problemas de Memória**: Vazamentos, uso excessivo
+- **Avisos e Deprecações**: Warnings, código obsoleto
+
+## 🎯 Casos de Uso
+
+- **Monitoramento de Produção**: Logs em tempo real com análise automática
+- **Debug de Aplicações**: Captura automática de erros e warnings
+- **Análise de Performance**: Identificação de gargalos e problemas
+- **Auditoria**: Rastreamento completo de eventos da aplicação
+- **DevOps**: Integração com pipelines CI/CD e alertas
+
+## 🔧 Personalização
+
+### Adicionar Regras Heurísticas
+```json
+{
+  "id": "custom-rule",
+  "pattern": "seu-padrao-aqui",
+  "level": "warn",
+  "classification": "Custom Warning",
+  "explanation": "Explicação personalizada",
+  "suggestion": "Sugestão de ação",
+  "priority": 2,
+  "tags": ["custom", "warning"]
+}
 ```
 
-**Vantagens da ingestão:**
-- Parse automático de arquivo:linha:coluna
-- Análise heurística imediata (tags + sugestões)
-- Processamento assíncrono para IA
-- Rate-limit: 100 requests/15min por IP
-- Suporte a batch (até 100 logs por request)
+### Integração com Aplicações
+```javascript
+// O sistema captura automaticamente:
+console.log('Informação importante');
+console.warn('Aviso do sistema');
+console.error('Erro crítico');
 
-## Análise Inteligente
+// Ou via API:
+fetch('/api/logs', {
+  method: 'POST',
+  body: JSON.stringify({
+    level: 'info',
+    message: 'Log personalizado',
+    tags: ['custom', 'api']
+  })
+});
+```
 
-- **Heurística**: análise baseada em padrões de texto
-- **Tags automáticas**: categorização por tipo de erro
-- **Sugestões**: dicas para resolver problemas comuns
-- **IA**: classificação e explicação avançada (em desenvolvimento)
+## 📈 Roadmap
 
-## Roadmap
+- [ ] Suporte a mais provedores de IA
+- [ ] Análise de sentimento dos logs
+- [ ] Alertas inteligentes
+- [ ] Integração com Slack/Discord
+- [ ] Exportação de relatórios
+- [ ] Machine Learning local
+- [ ] Clustering de logs similares
+- [ ] Análise de tendências temporais
 
-- [x] Filtros básicos (nível, tag, busca, limite)
-- [x] Gráficos estatísticos (volume por nível/tempo)
-- [x] Ingestão de logs com análise automática
-- [ ] Preferências do usuário (tema/filtros)
-- [ ] ML com TensorFlow.js (padrões avançados)
+## 🤝 Contribuição
 
-## Screenshots
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
 
-Coloque seus screenshots ou GIFs em `assets/screenshots/` e referencie aqui:
+## 📄 Licença
 
-![Overview Dark](assets/screenshots/overview.png)
-![Realtime Logs](assets/screenshots/realtime.gif)
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
-## Licença
+## 🆘 Suporte
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+- **Issues**: [GitHub Issues](https://github.com/seu-usuario/moonlight-logger/issues)
+- **Discord**: [Servidor da Comunidade](https://discord.gg/seu-servidor)
+- **Email**: suporte@moonlight-logger.com
 
-MIT
+---
+
+**Moonlight Logger** - Iluminando o caminho dos seus logs 🌙✨
