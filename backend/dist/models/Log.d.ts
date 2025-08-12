@@ -1,27 +1,32 @@
-export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
-export interface LogDocument {
-    level: LogLevel;
+import mongoose, { Document } from 'mongoose';
+export interface LogDocument extends Document {
+    level: 'info' | 'warn' | 'error' | 'debug';
     message: string;
     timestamp: Date;
-    context?: Record<string, unknown>;
-    tags?: string[];
-    suggestion?: string;
-    file?: string;
-    line?: number;
-    column?: number;
-    source?: string;
+    tags: string[];
+    context: {
+        origin: string;
+        pid: number;
+        file?: string;
+        line?: number;
+        column?: number;
+        stack?: string;
+        [key: string]: any;
+    };
     ai?: {
         classification?: string;
         explanation?: string;
         suggestion?: string;
         provider?: string;
-        score?: number;
-        at?: Date;
+        confidence?: number;
+        processingTime?: number;
     };
+    createdAt: Date;
+    updatedAt: Date;
 }
-export declare const LogModel: import("mongoose").Model<LogDocument, {}, {}, {}, import("mongoose").Document<unknown, {}, LogDocument, {}, {}> & LogDocument & {
-    _id: import("mongoose").Types.ObjectId;
-} & {
+export declare const LogModel: mongoose.Model<LogDocument, {}, {}, {}, mongoose.Document<unknown, {}, LogDocument, {}, {}> & LogDocument & Required<{
+    _id: unknown;
+}> & {
     __v: number;
 }, any>;
 //# sourceMappingURL=Log.d.ts.map
