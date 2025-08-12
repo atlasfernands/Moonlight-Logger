@@ -2,10 +2,10 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { connectMongo } from './config/mongo';
-import { connectRedis } from './config/redis';
+import { initMongoWithRetry } from './config/mongo';
+import { redisConnection } from './config/redis';
 import logsRouter from './routes/logs';
-import statsRouter from './routes/stats';
+import { statsRouter } from './routes/stats';
 import { installConsoleCapture } from './services/consoleCapture';
 
 const app = express();
@@ -22,8 +22,8 @@ app.use(cors());
 app.use(express.json());
 
 // Conecta com MongoDB e Redis
-connectMongo();
-connectRedis();
+initMongoWithRetry();
+// Redis já está conectado via import
 
 // Instala captura de console com análise híbrida
 installConsoleCapture(io);

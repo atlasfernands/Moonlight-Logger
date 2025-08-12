@@ -56,8 +56,8 @@ export class OpenAIProvider implements AIProvider {
         throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content;
+      const data = await response.json() as any;
+      const content = data.choices?.[0]?.message?.content;
       
       if (!content) {
         throw new Error('Resposta vazia da OpenAI API');
@@ -90,11 +90,11 @@ export class OpenAIProvider implements AIProvider {
     const context = {
       level: log.level,
       message: log.message,
-      file: log.file,
-      line: log.line,
       timestamp: log.timestamp,
-      tags: log.tags,
-      context: log.context
+      tags: log.tags || [],
+      file: (log as any).file,
+      line: (log as any).line,
+      source: (log as any).source || 'unknown'
     };
 
     return `Analise este log de aplicação e forneça insights técnicos:

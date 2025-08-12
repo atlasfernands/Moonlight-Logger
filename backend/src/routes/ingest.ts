@@ -2,11 +2,12 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { parseRawLogToDoc, type RawLog } from '../logger/parser';
 import { LogModel } from '../models/Log';
-import { analyzeLog } from '../services/logAnalysisService';
+import { LogAnalysisService } from '../services/logAnalysisService';
 import { createQueue } from '../config/redis';
 
 export const ingestRouter = Router();
 const analyzeQueue = createQueue('analyze-log');
+const analysisService = new LogAnalysisService();
 
 // Rate limit: 100 requests per 15 minutes por IP
 const ingestRateLimit = rateLimit({
@@ -58,7 +59,7 @@ ingestRouter.post('/raw', async (req, res) => {
     
     // Análise heurística imediata + enfileira para IA
     for (const log of created) {
-      const analysis = analyzeLog(log.message);
+      const analysis = await analysisService.analyzeLog(String(log._id), log.message, log.context || {});
       await LogModel.updateOne(
         { _id: log._id }, 
         { $set: { tags: analysis.tags, suggestion: analysis.suggestion } }

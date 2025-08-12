@@ -70,27 +70,34 @@ export class MockAIProvider implements AIProvider {
     await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
 
     // Seleciona insight baseado no nível e conteúdo do log
-    let selectedInsight: AIInsight;
+    let selectedInsight: AIInsight | null = null;
 
     if (log.level === 'error') {
-      // Para erros, seleciona insights mais críticos
-      const errorInsights = this.mockInsights.filter(i => 
-        i.classification.includes('Error') || 
-        i.classification.includes('Failure') ||
+      // Para erros, seleciona insights de erro
+      const errorInsights = this.mockInsights.filter(i =>
+        i.classification.includes('Error') ||
         i.classification.includes('Issue')
       );
-      selectedInsight = errorInsights[Math.floor(Math.random() * errorInsights.length)];
+      if (errorInsights.length > 0) {
+        selectedInsight = errorInsights[Math.floor(Math.random() * errorInsights.length)]!;
+      }
     } else if (log.level === 'warn') {
       // Para warnings, seleciona insights de atenção
-      const warningInsights = this.mockInsights.filter(i => 
-        i.classification.includes('Timeout') ||
-        i.classification.includes('Rate Limit') ||
+      const warningInsights = this.mockInsights.filter(i =>
+        i.classification.includes('Warning') ||
         i.classification.includes('Memory')
       );
-      selectedInsight = warningInsights[Math.floor(Math.random() * warningInsights.length)];
+      if (warningInsights.length > 0) {
+        selectedInsight = warningInsights[Math.floor(Math.random() * warningInsights.length)]!;
+      }
     } else {
       // Para info/debug, seleciona aleatoriamente
-      selectedInsight = this.mockInsights[Math.floor(Math.random() * this.mockInsights.length)];
+      selectedInsight = this.mockInsights[Math.floor(Math.random() * this.mockInsights.length)]!;
+    }
+
+    if (!selectedInsight) {
+      // Fallback para insight padrão
+      selectedInsight = this.mockInsights[0]!;
     }
 
     // Personaliza o insight baseado no contexto do log
@@ -107,14 +114,18 @@ export class MockAIProvider implements AIProvider {
   private personalizeExplanation(explanation: string, log: LogDocument): string {
     let personalized = explanation;
 
-    if (log.file) {
-      personalized = personalized.replace('serviço', `serviço em ${log.file}`);
+    if ((log as any).file) {
+      personalized = personalized.replace('serviço', `serviço em ${(log as any).file}`);
     }
 
     if (log.message.toLowerCase().includes('mongodb')) {
       personalized = personalized.replace('serviço externo', 'MongoDB');
     } else if (log.message.toLowerCase().includes('redis')) {
       personalized = personalized.replace('serviço externo', 'Redis');
+    }
+
+    if ((log as any).file && (log as any).line) {
+      explanation += ` - Localizado em ${(log as any).file}:${(log as any).line}`;
     }
 
     return personalized;
@@ -145,7 +156,7 @@ export class MockAIProvider implements AIProvider {
     }
 
     // Ajusta baseado no contexto
-    if (log.file && log.line) {
+    if ((log as any).file && (log as any).line) {
       adjusted += 0.05;
     }
 

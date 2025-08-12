@@ -141,8 +141,8 @@ export class LocalAIProvider implements AIProvider {
     }
 
     // Análise baseada no contexto
-    if (log.file && log.line) {
-      explanation += ` - Localizado em ${log.file}:${log.line}`;
+    if ((log as any).file && (log as any).line) {
+      explanation += ` - Localizado em ${(log as any).file}:${(log as any).line}`;
       confidence += 0.1;
     }
 

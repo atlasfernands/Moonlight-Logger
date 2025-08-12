@@ -45,8 +45,8 @@ const LogSchema = new Schema<LogDocument>({
     index: true
   },
   tags: [{
-    type: String,
-    index: true
+    type: String
+    // Removido index: true para evitar duplicação
   }],
   context: {
     origin: {
@@ -78,32 +78,28 @@ const LogSchema = new Schema<LogDocument>({
     processingTime: Number
   }
 }, {
-  timestamps: true,
-  // Índices compostos para performance
-  indexes: [
-    // Índice composto para filtros comuns
-    { level: 1, timestamp: -1 },
-    // Índice parcial para logs com origem de arquivo
-    { 'context.file': 1 },
-    // Índice para busca por tags
-    { tags: 1 },
-    // Índice para análise de IA
-    { 'ai.provider': 1, 'ai.confidence': -1 }
-  ]
+  timestamps: true
 });
+
+// Índices compostos para performance (otimizados)
+LogSchema.index({ level: 1, timestamp: -1 }); // Índice composto para filtros comuns
+LogSchema.index({ 'context.file': 1 }); // Índice parcial para logs com origem
+LogSchema.index({ tags: 1 }); // Índice para busca por tags
+LogSchema.index({ 'ai.provider': 1, 'ai.confidence': -1 }); // Índice para análise de IA
+LogSchema.index({ createdAt: -1 }); // Índice para ordenação por criação
 
 // Middleware para normalizar dados antes de salvar
 LogSchema.pre('save', function(next) {
   // Garante que tags sejam únicas
-  if (this.tags) {
-    this.tags = [...new Set(this.tags)];
+  if ((this as any).tags) {
+    (this as any).tags = [...new Set((this as any).tags)];
   }
-  
-  // Normaliza timestamp
-  if (!this.timestamp) {
-    this.timestamp = new Date();
+
+  // Garante que timestamp seja definido
+  if (!(this as any).timestamp) {
+    (this as any).timestamp = new Date();
   }
-  
+
   next();
 });
 

@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { logsRouter } from './routes/logs';
+import logsRouter from './routes/logs';
 import { statsRouter } from './routes/stats';
 import { ingestRouter } from './routes/ingest';
 

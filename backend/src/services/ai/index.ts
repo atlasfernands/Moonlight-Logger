@@ -65,7 +65,7 @@ export class AIService {
     for (const log of logs) {
       const insight = await this.analyzeLog(log);
       if (insight) {
-        insights.set(log._id.toString(), insight);
+        insights.set(log._id?.toString() || String(log._id), insight);
       }
     }
 

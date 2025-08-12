@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { LogModel } from '../models/Log';
+import { LogModel, LogDocument } from '../models/Log';
 import { getAnalysisService } from '../services/consoleCapture';
 
 const router = Router();
@@ -38,7 +38,8 @@ router.post('/', async (req, res) => {
     if (analysisService) {
       setImmediate(async () => {
         try {
-          await analysisService.analyzeLog(log._id.toString(), message, logData.context);
+          const logId = log._id?.toString() || String(log._id);
+          await analysisService.analyzeLog(logId, message, logData.context);
         } catch (error) {
           console.error('Erro na análise automática:', error);
         }
@@ -78,26 +79,33 @@ router.get('/', async (req, res) => {
     const pageNum = parseInt(page as string) || 1;
     const limitNum = parseInt(limit as string) || 50;
 
-    // Usa o método estático do modelo para filtros avançados
-    const logs = await LogModel.findWithFilters({
-      ...filters,
-      page: pageNum,
-      limit: limitNum
-    });
+    // Construir query de filtros
+    const query: any = {};
+    
+    if (level) query.level = level;
+    if (tags) {
+      const tagsArray = Array.isArray(tags) ? tags : [tags];
+      if (tagsArray.length > 0) {
+        query.tags = { $in: tagsArray };
+      }
+    }
+    if (q) query.$text = { $search: q };
+    if (from || to) {
+      query.timestamp = {};
+      if (from) query.timestamp.$gte = new Date(from as string);
+      if (to) query.timestamp.$lte = new Date(to as string);
+    }
+    if (hasSource === 'true') query['context.file'] = { $exists: true, $ne: null };
+
+    // Buscar logs com paginação
+    const logs = await LogModel.find(query)
+      .sort({ timestamp: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .lean();
 
     // Conta total para paginação
-    const totalQuery: any = {};
-    if (level) totalQuery.level = level;
-    if (tags && tags.length > 0) totalQuery.tags = { $in: Array.isArray(tags) ? tags : [tags] };
-    if (q) totalQuery.$text = { $search: q };
-    if (from || to) {
-      totalQuery.timestamp = {};
-      if (from) totalQuery.timestamp.$gte = new Date(from as string);
-      if (to) totalQuery.timestamp.$lte = new Date(to as string);
-    }
-    if (hasSource === 'true') totalQuery['context.file'] = { $exists: true, $ne: null };
-
-    const total = await LogModel.countDocuments(totalQuery);
+    const total = await LogModel.countDocuments(query);
     const pages = Math.ceil(total / limitNum);
 
     res.json({
@@ -125,12 +133,31 @@ router.get('/stats', async (req, res) => {
     if (to) filters.to = new Date(to as string);
     if (level) filters.level = level;
 
-    // Usa o método estático para estatísticas
-    const stats = await LogModel.getStats(filters);
+    // Construir query para estatísticas
+    const query: any = {};
+    if (from || to) {
+      query.timestamp = {};
+      if (from) query.timestamp.$gte = new Date(from as string);
+      if (to) query.timestamp.$lte = new Date(to as string);
+    }
+    if (level) query.level = level;
+
+    // Agregação para estatísticas por nível
+    const stats = await LogModel.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$level',
+          count: { $sum: 1 },
+          avgConfidence: { $avg: '$ai.confidence' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
     
     // Calcula totais
-    const totalLogs = stats.reduce((sum, stat) => sum + stat.count, 0);
-    const byLevel = stats.map(stat => ({
+    const totalLogs = stats.reduce((sum: number, stat: any) => sum + stat.count, 0);
+    const byLevel = stats.map((stat: any) => ({
       level: stat._id,
       count: stat.count,
       percentage: totalLogs > 0 ? (stat.count / totalLogs) * 100 : 0,
@@ -173,12 +200,12 @@ router.get('/stats', async (req, res) => {
     res.json({
       total: totalLogs,
       byLevel,
-      timeline: timeline.map(hour => ({
+      timeline: timeline.map((hour: any) => ({
         time: hour._id,
-        info: hour.levels.find(l => l.level === 'info')?.count || 0,
-        warn: hour.levels.find(l => l.level === 'warn')?.count || 0,
-        error: hour.levels.find(l => l.level === 'error')?.count || 0,
-        debug: hour.levels.find(l => l.level === 'debug')?.count || 0
+        info: hour.levels.find((l: any) => l.level === 'info')?.count || 0,
+        warn: hour.levels.find((l: any) => l.level === 'warn')?.count || 0,
+        error: hour.levels.find((l: any) => l.level === 'error')?.count || 0,
+        debug: hour.levels.find((l: any) => l.level === 'debug')?.count || 0
       }))
     });
   } catch (error) {
