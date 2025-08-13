@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import { initMongoWithRetry } from './config/mongo';
 import { redisConnection } from './config/redis';
+import { finalConfig } from './config/app';
 import logsRouter from './routes/logs';
 import { statsRouter } from './routes/stats';
 import { installConsoleCapture } from './services/consoleCapture';
@@ -12,7 +13,7 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL || `http://localhost:${finalConfig.frontendPort}`,
     methods: ['GET', 'POST']
   }
 });
@@ -37,10 +38,17 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
+    config: {
+      port: finalConfig.port,
+      frontendPort: finalConfig.frontendPort,
+      features: finalConfig.features,
+      scaling: finalConfig.scaling
+    },
     services: {
       mongo: 'connected', // Simplificado - em produção verificar status real
-      redis: 'connected',
-      analysis: 'hybrid'
+      redis: finalConfig.scaling.redisEnabled ? 'enabled' : 'disabled',
+      analysis: finalConfig.features.aiAnalysis ? 'ai-enabled' : 'heuristics-only',
+      offlineMode: finalConfig.features.offlineMode
     }
   });
 });
@@ -77,15 +85,33 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
 // Middleware 404
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Endpoint não encontrado' });
-});
+ });
 
-const PORT = process.env.PORT || 4000;
-
-server.listen(PORT, () => {
-  console.log(`🚀 Moonlight Logger rodando na porta ${PORT}`);
-  console.log(`🔍 Modo de análise: híbrido (heurísticas + IA opcional)`);
-  console.log(`📊 Dashboard: http://localhost:${PORT}`);
-  console.log(`🔌 Socket.IO: ws://localhost:${PORT}`);
+server.listen(finalConfig.port, () => {
+  console.log('=' .repeat(60));
+  console.log('🌙 MOONLIGHT LOGGER INICIADO COM SUCESSO!');
+  console.log('=' .repeat(60));
+  console.log(`🚀 Backend: http://localhost:${finalConfig.port}`);
+  console.log(`🎨 Frontend: http://localhost:${finalConfig.frontendPort}`);
+  console.log(`🔌 Socket.IO: ws://localhost:${finalConfig.port}`);
+  console.log('');
+  console.log('⚙️  Configurações ativas:');
+  console.log(`   📊 Porta: ${finalConfig.port}`);
+  console.log(`   🎨 Frontend: ${finalConfig.frontendPort}`);
+  console.log(`   📝 Nível de log: ${finalConfig.logLevel}`);
+  console.log(`   🔄 Tempo real: ${finalConfig.enableRealTime ? '✅' : '❌'}`);
+  console.log(`   �� IA: ${finalConfig.features.aiAnalysis ? '✅' : '❌'}`);
+  console.log(`   🔌 Offline: ${finalConfig.features.offlineMode ? '✅' : '❌'}`);
+  console.log(`   🚀 Redis: ${finalConfig.scaling.redisEnabled ? '✅' : '❌'}`);
+  console.log(`   📈 Auto-scaling: ${finalConfig.scaling.autoScale ? '✅' : '❌'}`);
+  console.log('');
+  console.log('🎯 Para testar:');
+  console.log(`   1. Acesse: http://localhost:${finalConfig.frontendPort}`);
+  console.log(`   2. Execute: simulate-errors.bat`);
+  console.log(`   3. Veja os logs em tempo real!`);
+  console.log('');
+  console.log('🌙 Moonlight Logger está pronto para facilitar sua vida!');
+  console.log('=' .repeat(60));
 });
 
 // Graceful shutdown

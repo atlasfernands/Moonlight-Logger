@@ -1,0 +1,5 @@
+[33m4327e3c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: implementar arquitetura de análise híbrida para logs
+[33maef72aa[m feat(ci): removido GitHub Actions CI/CD devido a falta de créditos; badges atualizados para tecnologias
+[33m4b09dbe[m feat(cleanup): removido arquivo fakeLogs.js para evitar logs falsos durante uso dos usuários
+[33m092bfd9[m feat(ui+security): painel de IA integrado na tabela de logs com expansão de linhas; rate-limit e autenticação INGEST_TOKEN implementados; documentação atualizada
+[33mb33a166[m feat(ingest+ai): rota /api/ingest/raw, parser de logs, campos de origem/código e worker de análise heurística; ui: suporte a AI no modelo
