@@ -3,9 +3,11 @@ import { parseLogMessage } from '../logger/parser';
 import { LogAnalysisService } from './logAnalysisService';
 import { Server as SocketIOServer } from 'socket.io';
 import { Types } from 'mongoose';
+import { finalConfig } from '../config/app';
 
 let io: SocketIOServer;
 let analysisService: LogAnalysisService;
+const realTimeEnabled = finalConfig.enableRealTime && finalConfig.features.realTimeUpdates;
 
 export function installConsoleCapture(socketIO: SocketIOServer) {
   io = socketIO;
@@ -88,7 +90,7 @@ async function captureLog(level: 'info' | 'warn' | 'error' | 'debug', args: any[
     }
 
     // Emite para frontend em tempo real
-    if (io) {
+    if (io && realTimeEnabled) {
       const logId =
         typeof savedLog._id === 'object' && savedLog._id !== null && 'toString' in savedLog._id
           ? savedLog._id.toString()
@@ -132,7 +134,7 @@ async function captureUnhandledError(type: string, error: Error | any) {
     analyzeLogInBackground(logId, message, logData.context);
 
     // Emite para frontend em tempo real
-    if (io) {
+    if (io && realTimeEnabled) {
       io.emit('log-created', {
         _id: logId,
         ...logData,
@@ -162,7 +164,7 @@ async function analyzeLogInBackground(logId: string, message: string, context: a
         });
 
         // Emite atualização para o frontend
-        if (io) {
+        if (io && realTimeEnabled) {
           io.emit('log-analyzed', {
             logId,
             analysis: {
@@ -204,5 +206,3 @@ function normalizeLogMessage(args: any[]): string {
 export function getAnalysisService(): LogAnalysisService {
   return analysisService;
 }
-
-
