@@ -4,6 +4,7 @@
   "logLevel": "info",
   "enableRealTime": true,
   "autoStart": true,
+  "coreMode": false,
   "features": {
     "errorTracking": true,
     "performanceMonitoring": true,
