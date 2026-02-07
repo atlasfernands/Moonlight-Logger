@@ -1,6 +1,7 @@
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { env } from './env';
+import { finalConfig } from './app';
 
 // Configuração híbrida: offline-first com escalabilidade automática
 let redisConnection: IORedis | null = null;
@@ -18,6 +19,10 @@ let redisStatus = {
   lastScaleCheck: 0
 };
 
+if (!finalConfig.scaling.redisEnabled) {
+  redisStatus.isOfflineMode = true;
+}
+
 // Controle de reconexão para evitar loops infinitos
 let reconnectTimeout: NodeJS.Timeout | null = null;
 let isReconnecting = false;
@@ -29,6 +34,11 @@ const localWorkers = new Map<string, Function>();
 
 function createRedisConnection(): IORedis | null {
   try {
+    if (!finalConfig.scaling.redisEnabled) {
+      console.log('🔧 [redis] Redis desativado pela configuração');
+      return null;
+    }
+
     // Se já estiver em modo offline, não tenta conectar
     if (redisStatus.isOfflineMode) {
       console.log('🔧 [redis] Modo offline ativo - não tentando conectar');
@@ -176,6 +186,10 @@ function scheduleReconnect(): void {
 
 // Função para verificar se precisa escalar baseado no volume de dados
 function shouldScaleUp(): boolean {
+  if (!finalConfig.scaling.redisEnabled || !finalConfig.scaling.autoScale) {
+    return false;
+  }
+
   const now = Date.now();
   
   // Verifica a cada 5 minutos
@@ -204,6 +218,10 @@ function shouldScaleUp(): boolean {
 
 // Função para registrar volume de dados
 export function recordDataVolume(volume: number): void {
+  if (!finalConfig.scaling.redisEnabled) {
+    return;
+  }
+
   redisStatus.dataVolume = volume;
   
   // Se precisa escalar e tem Redis disponível, tenta conectar
@@ -214,7 +232,7 @@ export function recordDataVolume(volume: number): void {
 }
 
 // Inicializa conexão apenas se não estiver em modo offline
-if (!redisStatus.isOfflineMode) {
+if (!redisStatus.isOfflineMode && finalConfig.scaling.redisEnabled) {
   redisConnection = createRedisConnection();
 }
 
@@ -548,4 +566,3 @@ export function forceScalingMode(enable: boolean): void {
   redisStatus.isAutoScaled = enable;
   console.log(`⚙️ [redis] Modo de escalabilidade ${enable ? 'ativado' : 'desativado'} manualmente`);
 }
-
