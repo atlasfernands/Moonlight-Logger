@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { LogModel, LogDocument } from '../models/Log';
 import { getAnalysisService } from '../services/consoleCapture';
+import { finalConfig } from '../config/app';
 
 const router = Router();
 
@@ -35,7 +36,7 @@ router.post('/', async (req, res) => {
 
     // Análise automática em background
     const analysisService = getAnalysisService();
-    if (analysisService) {
+    if (!finalConfig.features.minimalProcessing && analysisService) {
       setImmediate(async () => {
         try {
           const logId = log._id?.toString() || String(log._id);
@@ -225,6 +226,10 @@ router.post('/:id/analyze', async (req, res) => {
     }
 
     const analysisService = getAnalysisService();
+    if (finalConfig.features.minimalProcessing) {
+      return res.status(409).json({ error: 'Análise desabilitada em minimalProcessing' });
+    }
+
     if (!analysisService) {
       return res.status(503).json({ error: 'Serviço de análise não disponível' });
     }

@@ -1,6 +1,7 @@
 import { AnalysisConfig, HeuristicRule, loadAnalysisConfig } from '../config/analysis';
 import { LogModel } from '../models/Log';
 import { env } from '../config/env';
+import { finalConfig } from '../config/app';
 
 export interface LogAnalysis {
   classification: string;
@@ -23,6 +24,11 @@ export class LogAnalysisService {
   }
 
   private async initializeAIProvider() {
+    if (!finalConfig.features.aiAnalysis) {
+      console.log('🔍 AI desativada via configuração - usando apenas heurísticas');
+      return;
+    }
+
     // Pipeline Híbrido: IA só é inicializada se não estiver em modo offline
     if (env.aiProvider === 'offline') {
       console.log('🔍 Modo offline: apenas análise heurística ativa');
@@ -118,8 +124,10 @@ export class LogAnalysisService {
     let analysis: LogAnalysis;
 
     try {
+      const aiEnabled = finalConfig.features.aiAnalysis;
+
       // Pipeline Híbrido: Heurísticas sempre rodam, IA é condicional
-      if (env.aiProvider === 'offline') {
+      if (!aiEnabled || env.aiProvider === 'offline') {
         // Modo offline: apenas heurísticas
         analysis = await this.analyzeWithHeuristics(message, context);
       } else if (env.aiProvider === 'ai-only') {
@@ -303,4 +311,3 @@ export class LogAnalysisService {
     };
   }
 }
-
