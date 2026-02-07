@@ -8,6 +8,7 @@ export interface AppConfig {
   logLevel: string;
   enableRealTime: boolean;
   autoStart: boolean;
+  coreMode: boolean;
   features: {
     errorTracking: boolean;
     performanceMonitoring: boolean;
@@ -34,6 +35,7 @@ const DEFAULT_CONFIG: AppConfig = {
   logLevel: 'info',
   enableRealTime: true,
   autoStart: true,
+  coreMode: false,
   features: {
     errorTracking: true,
     performanceMonitoring: true,
@@ -154,7 +156,11 @@ export function getEnvironmentConfig(): Partial<AppConfig> {
   if (process.env.LOG_LEVEL) {
     envConfig.logLevel = process.env.LOG_LEVEL;
   }
-  
+
+  if (process.env.CORE_MODE) {
+    envConfig.coreMode = process.env.CORE_MODE === 'true';
+  }
+
   // Features
   if (process.env.ENABLE_REAL_TIME) {
     envConfig.enableRealTime = process.env.ENABLE_REAL_TIME === 'true';
@@ -190,7 +196,7 @@ export function getFinalConfig(): AppConfig {
   const envConfig = getEnvironmentConfig();
   
   // Mescla configurações
-  const finalConfig = {
+  let finalConfig = {
     ...appConfig,
     ...envConfig,
     features: {
@@ -203,6 +209,21 @@ export function getFinalConfig(): AppConfig {
     }
   };
   
+  if (finalConfig.coreMode) {
+    finalConfig = {
+      ...finalConfig,
+      features: {
+        ...finalConfig.features,
+        aiAnalysis: false
+      },
+      scaling: {
+        ...finalConfig.scaling,
+        redisEnabled: false,
+        autoScale: false
+      }
+    };
+  }
+
   // Valida configuração final
   if (!validateConfig(finalConfig)) {
     console.warn('⚠️  Usando configuração padrão devido a erros de validação');
@@ -220,6 +241,7 @@ console.log('⚙️  Configuração carregada:', {
   port: finalConfig.port,
   frontendPort: finalConfig.frontendPort,
   logLevel: finalConfig.logLevel,
+  coreMode: finalConfig.coreMode,
   features: Object.keys(finalConfig.features).filter(key => finalConfig.features[key as keyof typeof finalConfig.features]),
   scaling: {
     threshold: finalConfig.scaling.threshold,
