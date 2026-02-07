@@ -8,6 +8,7 @@ import { finalConfig } from '../config/app';
 let io: SocketIOServer;
 let analysisService: LogAnalysisService;
 const realTimeEnabled = finalConfig.enableRealTime && finalConfig.features.realTimeUpdates;
+const minimalProcessingEnabled = finalConfig.features.minimalProcessing;
 
 export function installConsoleCapture(socketIO: SocketIOServer) {
   io = socketIO;
@@ -56,7 +57,7 @@ export function installConsoleCapture(socketIO: SocketIOServer) {
 async function captureLog(level: 'info' | 'warn' | 'error' | 'debug', args: any[]) {
   try {
     const message = normalizeLogMessage(args);
-    const parsed = parseLogMessage(message);
+    const parsed = minimalProcessingEnabled ? { file: undefined, line: undefined, column: undefined } : parseLogMessage(message);
     
     const logData = {
       level,
@@ -77,16 +78,18 @@ async function captureLog(level: 'info' | 'warn' | 'error' | 'debug', args: any[
     const savedLog = log as LogDocument;
 
     // Análise automática em background
-    try {
-      await analyzeLogInBackground(
+    if (!minimalProcessingEnabled) {
+      try {
+        await analyzeLogInBackground(
         typeof savedLog._id === 'object' && savedLog._id !== null && 'toString' in savedLog._id
           ? savedLog._id.toString()
           : String(savedLog._id),
         message,
         logData.context
-      );
-    } catch (err) {
-      console.error('Erro ao analisar log em background:', err);
+        );
+      } catch (err) {
+        console.error('Erro ao analisar log em background:', err);
+      }
     }
 
     // Emite para frontend em tempo real
@@ -99,7 +102,9 @@ async function captureLog(level: 'info' | 'warn' | 'error' | 'debug', args: any[
       io.emit('log-created', {
         _id: logId,
         ...logData,
-        ai: { classification: 'Analyzing...', explanation: '', suggestion: '' }
+        ai: minimalProcessingEnabled
+          ? undefined
+          : { classification: 'Analyzing...', explanation: '', suggestion: '' }
       });
     }
 
@@ -131,14 +136,18 @@ async function captureUnhandledError(type: string, error: Error | any) {
     const logId = (savedLog._id as Types.ObjectId).toString();
 
     // Análise automática em background
-    analyzeLogInBackground(logId, message, logData.context);
+    if (!minimalProcessingEnabled) {
+      analyzeLogInBackground(logId, message, logData.context);
+    }
 
     // Emite para frontend em tempo real
     if (io && realTimeEnabled) {
       io.emit('log-created', {
         _id: logId,
         ...logData,
-        ai: { classification: 'Analyzing...', explanation: '', suggestion: '' }
+        ai: minimalProcessingEnabled
+          ? undefined
+          : { classification: 'Analyzing...', explanation: '', suggestion: '' }
       });
     }
 

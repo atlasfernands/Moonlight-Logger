@@ -15,6 +15,7 @@ export interface AppConfig {
     realTimeUpdates: boolean;
     aiAnalysis: boolean;
     offlineMode: boolean;
+    minimalProcessing: boolean;
   };
   scaling: {
     threshold: number;
@@ -41,7 +42,8 @@ const DEFAULT_CONFIG: AppConfig = {
     performanceMonitoring: true,
     realTimeUpdates: true,
     aiAnalysis: false,
-    offlineMode: true
+    offlineMode: true,
+    minimalProcessing: false
   },
   scaling: {
     threshold: 1000,
@@ -142,6 +144,7 @@ export function validateConfig(config: AppConfig): boolean {
 // Função para obter configuração de ambiente
 export function getEnvironmentConfig(): Partial<AppConfig> {
   const envConfig: Partial<AppConfig> = {};
+  const featureUpdates: Partial<AppConfig['features']> = {};
   
   // Portas
   if (process.env.PORT) {
@@ -167,16 +170,21 @@ export function getEnvironmentConfig(): Partial<AppConfig> {
   }
   
   if (process.env.AI_ANALYSIS) {
-    envConfig.features = {
-      ...appConfig.features,
-      aiAnalysis: process.env.AI_ANALYSIS === 'true'
-    };
+    featureUpdates.aiAnalysis = process.env.AI_ANALYSIS === 'true';
   }
   
   if (process.env.OFFLINE_MODE) {
+    featureUpdates.offlineMode = process.env.OFFLINE_MODE === 'true';
+  }
+
+  if (process.env.MINIMAL_PROCESSING) {
+    featureUpdates.minimalProcessing = process.env.MINIMAL_PROCESSING === 'true';
+  }
+
+  if (Object.keys(featureUpdates).length > 0) {
     envConfig.features = {
       ...appConfig.features,
-      offlineMode: process.env.OFFLINE_MODE === 'true'
+      ...featureUpdates
     };
   }
   
@@ -214,7 +222,8 @@ export function getFinalConfig(): AppConfig {
       ...finalConfig,
       features: {
         ...finalConfig.features,
-        aiAnalysis: false
+        aiAnalysis: false,
+        minimalProcessing: true
       },
       scaling: {
         ...finalConfig.scaling,

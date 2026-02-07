@@ -47,6 +47,7 @@ Para reduzir a barreira de entrada, o Moonlight Logger pode ser usado em um **co
 - **API de logs** (criar, listar, buscar)
 - **Dashboard básico** em tempo real via Socket.IO
 - **Pipeline offline** com heurísticas (sem dependência de IA)
+- **Modo de processamento mínimo** (`features.minimalProcessing`) para reduzir parsing/análise em background
 
 ### ➕ O que fica opcional
 - **Cache Redis** (performance e operações em lote)
@@ -141,6 +142,7 @@ O Moonlight Logger usa um **pipeline híbrido inteligente** que garante funciona
 # backend/.env
 AI_PROVIDER=offline          # offline, hybrid, ai-only
 AI_ENABLED=false            # true/false (só usado se AI_PROVIDER != offline)
+MINIMAL_PROCESSING=false    # true para menor overhead no backend
 
 # Configurações de IA (opcionais)
 OPENAI_API_KEY=your_key     # Só usado se AI_PROVIDER != offline
@@ -461,6 +463,15 @@ fetch('/api/logs', {
   })
 });
 ```
+
+## 🤖 Conexão Futura com Agente de IA Pessoal
+
+Planejamento de evolução para usar o logger como base de correção automática de bugs, com **IA do próprio usuário**:
+
+- Login/autenticação com conta de IA pessoal do usuário
+- Sugestões de correção baseadas no histórico de logs e padrões recorrentes
+- Sem dependência obrigatória de endpoints corporativos de IA
+- Modo opcional e controlado por configuração
 
 ## 📈 Roadmap
 
