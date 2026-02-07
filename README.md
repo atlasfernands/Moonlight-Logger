@@ -38,6 +38,23 @@ Sistema inteligente de logging para aplicações Node.js com análise automátic
 - **Cooldown Inteligente**: Prevenção de spam de alertas
 - **Severidade**: Níveis low, medium, high, critical
 
+## 🧭 Core Mínimo (Adoção Rápida)
+
+Para reduzir a barreira de entrada, o Moonlight Logger pode ser usado em um **core mínimo** — apenas backend + dashboard básico — deixando métricas, cache e alertas como módulos opcionais.
+
+### ✅ O que entra no core mínimo
+- **Captura automática** de logs (`console.log`, `warn`, `error`) e erros não tratados
+- **API de logs** (criar, listar, buscar)
+- **Dashboard básico** em tempo real via Socket.IO
+- **Pipeline offline** com heurísticas (sem dependência de IA)
+- **Modo de processamento mínimo** (`features.minimalProcessing`) para reduzir parsing/análise em background
+
+### ➕ O que fica opcional
+- **Cache Redis** (performance e operações em lote)
+- **Métricas Prometheus/Grafana**
+- **Sistema de alertas**
+- **Escalabilidade horizontal com Nginx**
+
 ### 🐳 **Infraestrutura Escalável**
 - **Docker Compose**: Orquestração completa com múltiplas instâncias
 - **Load Balancer**: Nginx para distribuição de carga
@@ -125,6 +142,7 @@ O Moonlight Logger usa um **pipeline híbrido inteligente** que garante funciona
 # backend/.env
 AI_PROVIDER=offline          # offline, hybrid, ai-only
 AI_ENABLED=false            # true/false (só usado se AI_PROVIDER != offline)
+MINIMAL_PROCESSING=false    # true para menor overhead no backend
 
 # Configurações de IA (opcionais)
 OPENAI_API_KEY=your_key     # Só usado se AI_PROVIDER != offline
@@ -283,6 +301,28 @@ node demo-optimizations.js
 - **Cache Hit Rate**: >80% para operações otimizadas
 - **Worker Utilization**: >90% durante picos de carga
 
+### 📐 Benchmarks Reais (Como Medir)
+
+Para transformar expectativas em **dados reais**, rode a suite de testes e registre os números no README ou em um relatório:
+
+```bash
+# Teste rápido (baseline)
+./scripts/stress-test.sh --quick
+
+# Teste de produção (carga mais alta)
+./scripts/stress-test.sh --production
+
+# Teste com padrões de tráfego variáveis
+./scripts/stress-test.sh -t 50000 -b 500 -p wave
+```
+
+**Sugestão de métricas a registrar:**
+- Logs/s (throughput médio e pico)
+- Latência p50/p95/p99
+- Taxa de erro por nível (info/warn/error)
+- Consumo de CPU/Memória
+- Diferença entre modos: `offline` vs `hybrid` vs `ai-only`
+
 ### 🧪 **Stress Testing Tradicional**
 
 ```bash
@@ -377,11 +417,18 @@ docker-compose up -d prometheus grafana fluentd
 
 ## 🎯 Casos de Uso
 
-- **Monitoramento de Produção**: Logs em tempo real com análise automática
-- **Debug de Aplicações**: Captura automática de erros e warnings
-- **Análise de Performance**: Identificação de gargalos e problemas
-- **Auditoria**: Rastreamento completo de eventos da aplicação
-- **DevOps**: Integração com pipelines CI/CD e alertas
+### Por perfil e cenário
+
+- **Produção (SRE/DevOps)**: Logs em tempo real + métricas + alertas para SLA e resposta a incidentes
+- **QA/Testes**: Pipeline offline para validação rápida de regressões sem depender de IA
+- **Troubleshooting**: Reanálise de logs e filtros por tags/níveis para encontrar a causa raiz
+- **Auditoria**: Rastreamento completo de eventos com persistência e consulta histórica
+
+### Conexão com o pipeline híbrido
+
+- **Offline**: ideal para ambientes isolados e testes rápidos
+- **Híbrido**: recomendado para produção com precisão maior
+- **IA-only**: útil para análises complexas e contexto profundo
 
 ## 🔧 Personalização
 
@@ -416,6 +463,15 @@ fetch('/api/logs', {
   })
 });
 ```
+
+## 🤖 Conexão Futura com Agente de IA Pessoal
+
+Planejamento de evolução para usar o logger como base de correção automática de bugs, com **IA do próprio usuário**:
+
+- Login/autenticação com conta de IA pessoal do usuário
+- Sugestões de correção baseadas no histórico de logs e padrões recorrentes
+- Sem dependência obrigatória de endpoints corporativos de IA
+- Modo opcional e controlado por configuração
 
 ## 📈 Roadmap
 
