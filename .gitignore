@@ -36,3 +36,6 @@ frontend/.cache/
 # Misc
 *.swp
 *.swo
+
+# Keep backend npm network workaround in repo
+!backend/.npmrc
